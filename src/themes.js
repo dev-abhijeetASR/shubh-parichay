@@ -15,7 +15,6 @@ export const THEMES = [
     heroBg: 'linear-gradient(160deg, #8f2433 0%, #7a1f2b 45%, #4a0f18 100%)',
     badgeBg: 'linear-gradient(180deg, #fff0bf, #f3c25a)',
     headerColor: '#7a1f2b',
-    previewDot: 'bg-[#7a1f2b]',
   },
   {
     id: 'emerald-gold',
@@ -33,7 +32,6 @@ export const THEMES = [
     heroBg: 'linear-gradient(160deg, #1b6348 0%, #134e38 45%, #0a2f22 100%)',
     badgeBg: 'linear-gradient(180deg, #fff2cc, #f4d068)',
     headerColor: '#134e38',
-    previewDot: 'bg-[#134e38]',
   },
   {
     id: 'peacock-blue',
@@ -51,7 +49,6 @@ export const THEMES = [
     heroBg: 'linear-gradient(160deg, #1a568a 0%, #123f66 45%, #08233b 100%)',
     badgeBg: 'linear-gradient(180deg, #fff3cf, #f3ca5a)',
     headerColor: '#123f66',
-    previewDot: 'bg-[#123f66]',
   },
   {
     id: 'rose-gold',
@@ -69,7 +66,6 @@ export const THEMES = [
     heroBg: 'linear-gradient(160deg, #a13d5d 0%, #882d49 45%, #54172a 100%)',
     badgeBg: 'linear-gradient(180deg, #ffeef2, #f3b4c4)',
     headerColor: '#882d49',
-    previewDot: 'bg-[#882d49]',
   },
   {
     id: 'saffron-amber',
@@ -87,44 +83,41 @@ export const THEMES = [
     heroBg: 'linear-gradient(160deg, #c25218 0%, #a84310 45%, #6b2505 100%)',
     badgeBg: 'linear-gradient(180deg, #fef3c7, #fcd34d)',
     headerColor: '#a84310',
-    previewDot: 'bg-[#a84310]',
   }
 ];
 
+// Resolves theme with any custom color overrides for the active theme
 export function getResolvedTheme(data) {
-  if (data.themeId === 'custom' && data.customTheme) {
-    const c = data.customTheme;
-    const primary = c.primary || '#7a1f2b';
-    const secondary = c.secondary || '#f28c28';
-    const gold = c.accentGold || '#c9962b';
-    const goldLight = c.goldLight || '#f3d38a';
-    const bg = c.bgCream || '#fff8ec';
+  const baseTheme = THEMES.find(t => t.id === data.themeId) || THEMES[0];
+  const customColors = data.themeOverrides?.[data.themeId] || data.customTheme;
+
+  if (customColors) {
+    const primary = customColors.primary || baseTheme.primary;
+    const secondary = customColors.secondary || baseTheme.secondary;
+    const gold = customColors.accentGold || baseTheme.accentGold;
+    const goldLight = customColors.goldLight || baseTheme.goldLight;
+    const bg = customColors.bgCream || baseTheme.bgCream;
 
     return {
-      id: 'custom',
-      name: 'Custom Theme',
-      subtitle: 'Personalized Palette',
+      ...baseTheme,
       primary,
       primaryDark: adjustColor(primary, -30),
       secondary,
       accentGold: gold,
       goldLight,
       bgCream: bg,
-      cardBg: '#ffffff',
       borderColor: goldLight,
-      ink: '#222222',
-      heroBg: `linear-gradient(160deg, ${adjustColor(primary, 20)} 0%, ${primary} 45%, ${adjustColor(primary, -40)} 100%)`,
+      heroBg: `linear-gradient(160deg, ${adjustColor(primary, 20)} 0%, ${primary} 45%, ${adjustColor(primary, -35)} 100%)`,
       badgeBg: `linear-gradient(180deg, #fff2cc, ${goldLight})`,
       headerColor: primary,
-      previewDot: 'bg-stone-800',
     };
   }
 
-  return THEMES.find(t => t.id === data.themeId) || THEMES[0];
+  return baseTheme;
 }
 
-// Lighten/darken a hex color
 function adjustColor(hex, percent) {
+  if (!hex || !hex.startsWith('#') || hex.length < 7) return hex;
   let num = parseInt(hex.replace('#', ''), 16);
   let amt = Math.round(2.55 * percent);
   let R = (num >> 16) + amt;

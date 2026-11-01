@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { THEMES, SHLOKA_PRESETS } from '../../themes';
+import { THEMES, SHLOKA_PRESETS, getResolvedTheme } from '../../themes';
 import InfoTooltip from '../InfoTooltip';
 import { 
   Palette, 
@@ -12,11 +12,10 @@ import {
   Upload, 
   Plus, 
   Trash2, 
-  Check,
-  Calendar,
-  Layers,
-  Star,
-  Sliders,
+  Check, 
+  Calendar, 
+  Star, 
+  RotateCcw,
   Camera
 } from 'lucide-react';
 
@@ -37,20 +36,48 @@ export default function FormEditor({ data, onChange }) {
     });
   };
 
-  const updateCustomColor = (colorKey, colorVal) => {
+  // Get active theme definition and current colors
+  const activeThemeBase = THEMES.find(t => t.id === data.themeId) || THEMES[0];
+  const activeResolvedTheme = getResolvedTheme(data);
+
+  // When user clicks a theme, switch themeId.
+  const handleSelectTheme = (themeId) => {
     onChange({
       ...data,
-      themeId: 'custom',
-      customTheme: {
-        ...(data.customTheme || {
-          primary: '#7a1f2b',
-          secondary: '#f28c28',
-          accentGold: '#c9962b',
-          goldLight: '#f3d38a',
-          bgCream: '#fff8ec'
-        }),
-        [colorKey]: colorVal
+      themeId
+    });
+  };
+
+  // Update a specific color for the CURRENTLY selected theme
+  const handleUpdateThemeColor = (colorKey, colorVal) => {
+    const currentOverrides = data.themeOverrides?.[data.themeId] || {
+      primary: activeThemeBase.primary,
+      secondary: activeThemeBase.secondary,
+      accentGold: activeThemeBase.accentGold,
+      goldLight: activeThemeBase.goldLight,
+      bgCream: activeThemeBase.bgCream
+    };
+
+    onChange({
+      ...data,
+      themeOverrides: {
+        ...(data.themeOverrides || {}),
+        [data.themeId]: {
+          ...currentOverrides,
+          [colorKey]: colorVal
+        }
       }
+    });
+  };
+
+  // Reset current theme's colors to its original defaults
+  const handleResetThemeColors = () => {
+    if (!data.themeOverrides?.[data.themeId]) return;
+    const updatedOverrides = { ...(data.themeOverrides || {}) };
+    delete updatedOverrides[data.themeId];
+    onChange({
+      ...data,
+      themeOverrides: updatedOverrides
     });
   };
 
@@ -151,7 +178,6 @@ export default function FormEditor({ data, onChange }) {
     });
   };
 
-  // Extract current feet and inches from data.height string (e.g. 5'8")
   const currentFeet = (() => {
     const match = (data.height || '').match(/(\d+)'/);
     return match ? match[1] : '5';
@@ -246,6 +272,8 @@ export default function FormEditor({ data, onChange }) {
     ? data.photoUrls 
     : (data.photoUrl ? [data.photoUrl] : []);
 
+  const hasColorOverrides = Boolean(data.themeOverrides?.[data.themeId]);
+
   return (
     <div className="flex flex-col h-full bg-white border-r border-stone-200">
       {/* Category Tabs */}
@@ -279,24 +307,24 @@ export default function FormEditor({ data, onChange }) {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center">
                   <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-                    1. Royal Themes &amp; Custom Palette
+                    1. Select Royal Theme
                   </h3>
                   <InfoTooltip 
-                    title="Themes & Color Palettes"
-                    text="Choose from our 5 heritage Indian royal palettes or craft your own personalized custom color combination."
-                    example="Select 'Custom Palette' below to pick your own primary maroon, emerald, navy, or royal purple color!"
+                    title="Royal Themes & Customization"
+                    text="Select any of the 5 royal themes. Each theme comes with its authentic Vedic defaults, and you can freely adjust any color below!"
                   />
                 </div>
               </div>
 
-              {/* Preset Theme Cards */}
+              {/* 5 Preset Theme Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {THEMES.map((theme) => {
                   const isSelected = data.themeId === theme.id;
+                  const themeColors = data.themeOverrides?.[theme.id] || theme;
                   return (
                     <button
                       key={theme.id}
-                      onClick={() => updateField('themeId', theme.id)}
+                      onClick={() => handleSelectTheme(theme.id)}
                       className={`flex items-center gap-3 p-3 rounded-2xl border text-left transition-all ${
                         isSelected 
                           ? 'border-amber-600 ring-2 ring-amber-500/30 bg-amber-50/30' 
@@ -304,10 +332,12 @@ export default function FormEditor({ data, onChange }) {
                       }`}
                     >
                       <div 
-                        className="w-9 h-9 rounded-xl flex-none flex items-center justify-center text-white shadow-sm"
-                        style={{ background: theme.heroBg }}
+                        className="w-10 h-10 rounded-xl flex-none flex items-center justify-center text-white shadow-sm"
+                        style={{ 
+                          background: `linear-gradient(135deg, ${themeColors.primary}, ${themeColors.secondary})` 
+                        }}
                       >
-                        {isSelected && <Check className="w-4 h-4 stroke-[3]" />}
+                        {isSelected && <Check className="w-5 h-5 stroke-[3]" />}
                       </div>
                       <div className="min-w-0">
                         <div className="font-semibold text-stone-900 text-xs md:text-sm truncate">{theme.name}</div>
@@ -316,120 +346,114 @@ export default function FormEditor({ data, onChange }) {
                     </button>
                   );
                 })}
-
-                {/* Custom Palette Option */}
-                <button
-                  type="button"
-                  onClick={() => updateField('themeId', 'custom')}
-                  className={`flex items-center gap-3 p-3 rounded-2xl border text-left transition-all ${
-                    data.themeId === 'custom' 
-                      ? 'border-amber-600 ring-2 ring-amber-500/30 bg-amber-50/40' 
-                      : 'border-dashed border-stone-300 hover:border-stone-400 bg-white'
-                  }`}
-                >
-                  <div className="w-9 h-9 rounded-xl flex-none flex items-center justify-center text-amber-700 bg-amber-100 shadow-sm">
-                    <Sliders className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-semibold text-stone-900 text-xs md:text-sm">Custom Color Palette</div>
-                    <div className="text-[11px] text-stone-500">Pick your own hex colors</div>
-                  </div>
-                </button>
               </div>
 
-              {/* Interactive Color Pickers (Shown if Custom Palette is active or user wants to customize) */}
-              {data.themeId === 'custom' && (
-                <div className="mt-4 p-4 rounded-2xl border border-amber-300 bg-amber-50/30 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-amber-900">
-                      Customize Palette Colors
+              {/* Live Color Customizer for Selected Theme */}
+              <div className="mt-4 p-4 rounded-2xl border border-amber-300 bg-amber-50/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-950 block">
+                      Customize Colors for {activeThemeBase.name}
                     </span>
-                    <span className="text-[10px] text-amber-700 font-medium">Live sync with preview</span>
+                    <span className="text-[10px] text-amber-800">
+                      Change any shade while keeping typography &amp; layout intact
+                    </span>
+                  </div>
+                  {hasColorOverrides && (
+                    <button
+                      type="button"
+                      onClick={handleResetThemeColors}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-amber-900 bg-white border border-amber-300 rounded-lg hover:bg-amber-100 transition-colors shadow-2xs"
+                      title="Reset this theme's colors back to its original preset"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-700 block mb-1">
+                      Primary Royal Shade
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={activeResolvedTheme.primary}
+                        onChange={(e) => handleUpdateThemeColor('primary', e.target.value)}
+                        className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5 bg-white"
+                      />
+                      <input
+                        type="text"
+                        value={activeResolvedTheme.primary}
+                        onChange={(e) => handleUpdateThemeColor('primary', e.target.value)}
+                        className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono bg-white"
+                      />
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <label className="text-[11px] font-semibold text-stone-700 block mb-1">
-                        Primary Regal Shade
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={data.customTheme?.primary || '#7a1f2b'}
-                          onChange={(e) => updateCustomColor('primary', e.target.value)}
-                          className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5"
-                        />
-                        <input
-                          type="text"
-                          value={data.customTheme?.primary || '#7a1f2b'}
-                          onChange={(e) => updateCustomColor('primary', e.target.value)}
-                          className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono"
-                        />
-                      </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-700 block mb-1">
+                      Accent Gold
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={activeResolvedTheme.accentGold}
+                        onChange={(e) => handleUpdateThemeColor('accentGold', e.target.value)}
+                        className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5 bg-white"
+                      />
+                      <input
+                        type="text"
+                        value={activeResolvedTheme.accentGold}
+                        onChange={(e) => handleUpdateThemeColor('accentGold', e.target.value)}
+                        className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono bg-white"
+                      />
                     </div>
+                  </div>
 
-                    <div>
-                      <label className="text-[11px] font-semibold text-stone-700 block mb-1">
-                        Accent Gold
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={data.customTheme?.accentGold || '#c9962b'}
-                          onChange={(e) => updateCustomColor('accentGold', e.target.value)}
-                          className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5"
-                        />
-                        <input
-                          type="text"
-                          value={data.customTheme?.accentGold || '#c9962b'}
-                          onChange={(e) => updateCustomColor('accentGold', e.target.value)}
-                          className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono"
-                        />
-                      </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-700 block mb-1">
+                      Secondary Accent Warmth
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={activeResolvedTheme.secondary}
+                        onChange={(e) => handleUpdateThemeColor('secondary', e.target.value)}
+                        className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5 bg-white"
+                      />
+                      <input
+                        type="text"
+                        value={activeResolvedTheme.secondary}
+                        onChange={(e) => handleUpdateThemeColor('secondary', e.target.value)}
+                        className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono bg-white"
+                      />
                     </div>
+                  </div>
 
-                    <div>
-                      <label className="text-[11px] font-semibold text-stone-700 block mb-1">
-                        Secondary Warmth
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={data.customTheme?.secondary || '#f28c28'}
-                          onChange={(e) => updateCustomColor('secondary', e.target.value)}
-                          className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5"
-                        />
-                        <input
-                          type="text"
-                          value={data.customTheme?.secondary || '#f28c28'}
-                          onChange={(e) => updateCustomColor('secondary', e.target.value)}
-                          className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-semibold text-stone-700 block mb-1">
-                        Background Tint
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={data.customTheme?.bgCream || '#fff8ec'}
-                          onChange={(e) => updateCustomColor('bgCream', e.target.value)}
-                          className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5"
-                        />
-                        <input
-                          type="text"
-                          value={data.customTheme?.bgCream || '#fff8ec'}
-                          onChange={(e) => updateCustomColor('bgCream', e.target.value)}
-                          className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono"
-                        />
-                      </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-700 block mb-1">
+                      Background Tint (Canvas)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={activeResolvedTheme.bgCream}
+                        onChange={(e) => handleUpdateThemeColor('bgCream', e.target.value)}
+                        className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5 bg-white"
+                      />
+                      <input
+                        type="text"
+                        value={activeResolvedTheme.bgCream}
+                        onChange={(e) => handleUpdateThemeColor('bgCream', e.target.value)}
+                        className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono bg-white"
+                      />
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Sacred Shloka Section */}
@@ -680,7 +704,7 @@ export default function FormEditor({ data, onChange }) {
           </div>
         )}
 
-        {/* TAB 3: JANMA & KUNDALI (with Height in cm + Ft/In) */}
+        {/* TAB 3: JANMA & KUNDALI */}
         {activeTab === 'personal' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">

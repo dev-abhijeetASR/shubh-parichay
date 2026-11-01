@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import FormEditor from './components/FormEditor/FormEditor';
 import BiodataPreview from './components/BiodataPreview';
 import FallingPetals from './components/FallingPetals';
+import FeedbackModal from './components/FeedbackModal';
 import { initialBiodata } from './data/initialData';
 
 const STORAGE_KEY = 'shubh_parichay_biodata_v1';
@@ -30,6 +31,7 @@ export default function App() {
 
   const [previewMode, setPreviewMode] = useState('desktop'); // 'mobile' | 'tablet' | 'desktop'
   const [mobileActiveView, setMobileActiveView] = useState('editor'); // 'editor' | 'preview'
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   const handleResetData = () => {
     if (window.confirm('Are you sure you want to clear all form fields?')) {
@@ -39,12 +41,14 @@ export default function App() {
         profileTagline: '',
         communityBadge: '',
         photoUrl: '',
+        photoUrls: [],
         aboutMe: '',
         dob: '',
         dobFormatted: '',
         birthTime: '',
         birthPlace: '',
         height: '',
+        heightCm: '',
         manglik: 'No',
         gotra: '',
         rashi: '',
@@ -88,6 +92,7 @@ export default function App() {
           setPreviewMode={setPreviewMode}
           mobileActiveView={mobileActiveView}
           setMobileActiveView={setMobileActiveView}
+          onOpenFeedback={() => setIsFeedbackOpen(true)}
         />
       </div>
 
@@ -110,10 +115,21 @@ export default function App() {
         >
           {biodata.enablePetals && <FallingPetals count={24} />}
           <div className="py-2 px-1 md:px-4">
-            <BiodataPreview data={biodata} previewMode={previewMode} />
+            <BiodataPreview 
+              data={biodata} 
+              previewMode={previewMode} 
+              onOpenFeedback={() => setIsFeedbackOpen(true)}
+            />
           </div>
         </main>
       </div>
+
+      {/* Feedback & Text Summary Modal */}
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        data={biodata}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import KalashSvg from './KalashSvg';
 import { MandalaSvg, SuryaRaysSvg, VanshSunIcon } from './MandalaRaysSvg';
 import { getResolvedTheme } from '../themes';
+import { downloadBiodataText } from '../utils/exportText';
 import { 
   Heart, 
   User, 
@@ -15,13 +16,14 @@ import {
   Share2, 
   Printer,
   Camera,
-  X
+  X,
+  FileText
 } from 'lucide-react';
 
-export default function BiodataPreview({ data, previewMode = 'desktop' }) {
+export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFeedback }) {
   const theme = useMemo(() => {
     return getResolvedTheme(data);
-  }, [data.themeId, data.customTheme]);
+  }, [data.themeId, data.themeOverrides, data.customTheme]);
 
   const [activeModalImage, setActiveModalImage] = useState(null);
 
@@ -67,6 +69,20 @@ export default function BiodataPreview({ data, previewMode = 'desktop' }) {
 
   const primaryPhoto = photoList[0];
   const additionalPhotos = photoList.slice(1);
+
+  const handlePrint = () => {
+    window.print();
+    setTimeout(() => {
+      onOpenFeedback?.();
+    }, 1200);
+  };
+
+  const handleDownloadTxt = () => {
+    downloadBiodataText(data);
+    setTimeout(() => {
+      onOpenFeedback?.();
+    }, 800);
+  };
 
   // Responsive wrapper styling
   const wrapperWidth = previewMode === 'mobile' 
@@ -198,7 +214,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop' }) {
           </div>
         </header>
 
-        {/* Section: Multiple Photographs Gallery (if more than 1 photo uploaded) */}
+        {/* Section: Multiple Photographs Gallery */}
         {additionalPhotos.length > 0 && (
           <section 
             className="relative mt-6 rounded-2xl p-6 border shadow-md transition-all print-break-inside-avoid"
@@ -651,7 +667,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop' }) {
         </p>
 
         {/* Floating Action Bar */}
-        <div className="no-print fixed left-1/2 bottom-5 -translate-x-1/2 z-40 flex items-center gap-2.5 p-2 rounded-full bg-stone-900/90 text-white backdrop-blur-md shadow-2xl border border-white/10">
+        <div className="no-print fixed left-1/2 bottom-5 -translate-x-1/2 z-40 flex items-center gap-2 p-2 rounded-full bg-stone-900/90 text-white backdrop-blur-md shadow-2xl border border-white/10">
           <button 
             type="button" 
             onClick={() => {
@@ -666,18 +682,28 @@ export default function BiodataPreview({ data, previewMode = 'desktop' }) {
                 alert('Page link copied to clipboard!');
               }
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm text-stone-950 bg-gradient-to-b from-amber-200 to-amber-400 hover:brightness-105 transition-all shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium text-xs text-stone-950 bg-gradient-to-b from-amber-200 to-amber-400 hover:brightness-105 transition-all shadow-sm"
           >
-            <Share2 className="w-4 h-4" />
+            <Share2 className="w-3.5 h-3.5" />
             <span>Share</span>
           </button>
 
           <button 
             type="button" 
-            onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm text-amber-100 border border-amber-300/40 hover:bg-white/10 transition-all"
+            onClick={handleDownloadTxt}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium text-xs text-amber-200 border border-amber-300/30 hover:bg-white/10 transition-all"
+            title="Download lightweight plain text file (~2 KB)"
           >
-            <Printer className="w-4 h-4" />
+            <FileText className="w-3.5 h-3.5 text-amber-400" />
+            <span>.TXT (2KB)</span>
+          </button>
+
+          <button 
+            type="button" 
+            onClick={handlePrint}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-xs text-stone-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-105 transition-all shadow-sm"
+          >
+            <Printer className="w-3.5 h-3.5" />
             <span>Save PDF</span>
           </button>
         </div>

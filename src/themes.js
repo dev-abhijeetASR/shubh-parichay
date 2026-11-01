@@ -91,6 +91,58 @@ export const THEMES = [
   }
 ];
 
+export function getResolvedTheme(data) {
+  if (data.themeId === 'custom' && data.customTheme) {
+    const c = data.customTheme;
+    const primary = c.primary || '#7a1f2b';
+    const secondary = c.secondary || '#f28c28';
+    const gold = c.accentGold || '#c9962b';
+    const goldLight = c.goldLight || '#f3d38a';
+    const bg = c.bgCream || '#fff8ec';
+
+    return {
+      id: 'custom',
+      name: 'Custom Theme',
+      subtitle: 'Personalized Palette',
+      primary,
+      primaryDark: adjustColor(primary, -30),
+      secondary,
+      accentGold: gold,
+      goldLight,
+      bgCream: bg,
+      cardBg: '#ffffff',
+      borderColor: goldLight,
+      ink: '#222222',
+      heroBg: `linear-gradient(160deg, ${adjustColor(primary, 20)} 0%, ${primary} 45%, ${adjustColor(primary, -40)} 100%)`,
+      badgeBg: `linear-gradient(180deg, #fff2cc, ${goldLight})`,
+      headerColor: primary,
+      previewDot: 'bg-stone-800',
+    };
+  }
+
+  return THEMES.find(t => t.id === data.themeId) || THEMES[0];
+}
+
+// Lighten/darken a hex color
+function adjustColor(hex, percent) {
+  let num = parseInt(hex.replace('#', ''), 16);
+  let amt = Math.round(2.55 * percent);
+  let R = (num >> 16) + amt;
+  let B = ((num >> 8) & 0x00ff) + amt;
+  let G = (num & 0x0000ff) + amt;
+  return (
+    '#' +
+    (
+      0x1000000 +
+      (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
+      (B < 255 ? (B < 1 ? 0 : B) : 255) * 0x100 +
+      (G < 255 ? (G < 1 ? 0 : G) : 255)
+    )
+      .toString(16)
+      .slice(1)
+  );
+}
+
 export const SHLOKA_PRESETS = [
   { id: 'ganesh', text: '॥ श्री गणेशाय नमः ॥', label: 'Shree Ganeshay Namah' },
   { id: 'radha-krishna', text: '॥ श्री राधा-कृष्णाभ्यां नमः ॥', label: 'Shree Radha-Krishnabhyam Namah' },

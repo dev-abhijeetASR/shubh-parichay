@@ -5,16 +5,32 @@ export const initialBiodata = {
   enableMandala: true,
   enableSuryaRays: true,
   
+  // Custom theme colors (used when themeId === 'custom')
+  customTheme: {
+    primary: '#7a1f2b',
+    secondary: '#f28c28',
+    accentGold: '#c9962b',
+    goldLight: '#f3d38a',
+    bgCream: '#fff8ec'
+  },
+
+  // Multiple Profile Photos: first photo is primary portrait in arch
+  photoUrls: [
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=600&h=750&q=80',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?fit=crop&w=600&h=750&q=80',
+    'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?fit=crop&w=600&h=750&q=80'
+  ],
+  photoUrl: '', // legacy fallback if single string
+  
   // Profile Basics
   fullName: 'Abhijeet B Singh',
   profileTagline: 'Computer Engineer · Infosys · Mumbai',
   communityBadge: 'रघुवंशी',
-  photoUrl: '', // Will support uploaded base64 data URI or sample
   
   // Quick Highlight Chips
   quickHighlights: [
     { label: 'years', value: '28', autoFromDob: true },
-    { label: 'height', value: "5'8\"" },
+    { label: 'height', value: "5'8\" (173 cm)" },
     { label: 'Born in', value: 'Varanasi' },
     { label: 'Kundali', value: 'Non-Manglik' }
   ],
@@ -28,8 +44,9 @@ export const initialBiodata = {
   birthTime: '09:30 AM',
   birthPlace: 'Varanasi',
   height: "5'8\"",
+  heightCm: '173',
   complexion: 'Wheatish',
-  manglik: 'No', // 'No', 'Yes', 'Anshik'
+  manglik: 'No', // 'No', 'Yes', 'Anshik', "Don't Know"
   rashi: 'Mesh (Aries)',
   nakshatra: 'Bharani',
   gotra: 'Kashyap',
@@ -57,7 +74,7 @@ export const initialBiodata = {
   ],
   languages: ['English', 'Hindi', 'Marathi'],
 
-  // Family Members
+  // Family Members (Mother with Gotra)
   familyMembers: [
     {
       id: 'f1',
@@ -87,7 +104,7 @@ export const initialBiodata = {
       id: 'f4',
       generation: 'Parents',
       relation: 'Mother',
-      name: 'Mrs. Reema B. Singh',
+      name: 'Mrs. Reema B. Singh (Gotra: Sandilya)',
       role: 'Homemaker',
       isLate: false
     }

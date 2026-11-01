@@ -1,7 +1,7 @@
-import { THEMES } from '../themes';
+import { getResolvedTheme } from '../themes';
 
 export function generateStandaloneHtml(data) {
-  const theme = THEMES.find(t => t.id === data.themeId) || THEMES[0];
+  const theme = getResolvedTheme(data);
   
   // Calculate age from DOB
   let age = '28';
@@ -23,6 +23,22 @@ export function generateStandaloneHtml(data) {
     }
   }
 
+  // Height formatting (ft/in + cm)
+  let formattedHeight = data.height || '';
+  if (data.height && data.heightCm) {
+    formattedHeight = `${data.height} (${data.heightCm} cm)`;
+  } else if (data.heightCm) {
+    formattedHeight = `${data.heightCm} cm`;
+  }
+
+  // Photos resolution
+  const photoList = Array.isArray(data.photoUrls) && data.photoUrls.length > 0 
+    ? data.photoUrls 
+    : (data.photoUrl ? [data.photoUrl] : ['https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=600&h=750&q=80']);
+
+  const primaryPhoto = photoList[0];
+  const additionalPhotos = photoList.slice(1);
+
   // Pre-generate career list
   const careerHtml = (data.careerItems || []).map(item => `
       <li>
@@ -41,7 +57,7 @@ export function generateStandaloneHtml(data) {
       <span class="lang">${escapeHtml(l)}</span>
   `).join('');
 
-  // Pre-generate family members grouped by generation
+  // Pre-generate family members
   const familyHtml = (data.familyMembers || []).map(m => `
       <div class="fam ${m.isLate ? 'late' : ''}">
         <div class="av">${escapeHtml((m.name || 'F').trim().charAt(0).toUpperCase())}</div>
@@ -51,8 +67,22 @@ export function generateStandaloneHtml(data) {
       </div>
   `).join('');
 
-  // Image source: if user uploaded, use base64 data URL; else placeholder or fallback
-  const imgSrc = data.photoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=600&h=750&q=80';
+  // Pre-generate photo gallery cards if more than 1 photo exists
+  const galleryHtml = additionalPhotos.length > 0 ? `
+  <section class="card">
+    <div class="head">
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+      <h2>Photo Gallery<small>Additional Photographs (${photoList.length} total)</small></h2>
+    </div>
+    <div class="gallery-grid">
+      ${photoList.map((url, i) => `
+        <div class="gallery-item ${i === 0 ? 'is-arch' : ''}">
+          <img src="${url}" alt="Candidate photo ${i + 1}">
+          ${i === 0 ? '<span class="arch-badge">Arch Portrait</span>' : ''}
+        </div>
+      `).join('')}
+    </div>
+  </section>` : '';
 
   return `<!doctype html>
 <html lang="en">
@@ -145,6 +175,13 @@ export function generateStandaloneHtml(data) {
   .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:.85rem;
     background:rgba(255,255,255,.12);border:1px solid rgba(255,215,130,.45);color:#fff3da;backdrop-filter:blur(4px)}
   .chip b{color:#ffd77a;font-weight:600}
+
+  /* Gallery Grid */
+  .gallery-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:12px;margin-top:12px}
+  .gallery-item{position:relative;aspect-ratio:4/5;border-radius:14px;overflow:hidden;border:2px solid var(--line);box-shadow:0 4px 10px -4px rgba(0,0,0,.2)}
+  .gallery-item.is-arch{border-color:var(--gold)}
+  .gallery-item img{width:100%;height:100%;object-fit:cover;display:block}
+  .arch-badge{position:absolute;top:6px;left:6px;background:var(--gold);color:#000;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px}
 
   /* Cards */
   .card{position:relative;margin-top:26px;background:var(--card);border-radius:22px;padding:26px 22px 22px;
@@ -302,7 +339,7 @@ ${data.enablePetals ? '<div class="petals" id="petals" aria-hidden="true"></div>
         <circle r="62" fill="#ffd27a" opacity=".18"/>
         <g fill="url(#rg)" id="rays"></g>
       </svg>
-      <div class="arch"><img src="${imgSrc}" alt="Photo of ${escapeHtml(data.fullName)}"></div>
+      <div class="arch"><img src="${primaryPhoto}" alt="Photo of ${escapeHtml(data.fullName)}"></div>
     </div>
     <p class="script">Biodata</p>
     <h1 class="name">${escapeHtml(data.fullName)}</h1>
@@ -314,11 +351,14 @@ ${data.enablePetals ? '<div class="petals" id="petals" aria-hidden="true"></div>
     <p class="tag">${escapeHtml(data.profileTagline)}</p>
     <div class="chips">
       <span class="chip"><b>${age}</b> years</span>
-      ${data.height ? `<span class="chip"><b>${escapeHtml(data.height)}</b> height</span>` : ''}
+      ${formattedHeight ? `<span class="chip"><b>${escapeHtml(formattedHeight)}</b> height</span>` : ''}
       ${data.birthPlace ? `<span class="chip">Born in <b>${escapeHtml(data.birthPlace)}</b></span>` : ''}
       ${data.manglik ? `<span class="chip"><b>${data.manglik === 'No' ? 'Non-Manglik' : data.manglik + ' Manglik'}</b></span>` : ''}
     </div>
   </header>
+
+  <!-- Photo Gallery (if multiple photos exist) -->
+  ${galleryHtml}
 
   <!-- About Me -->
   ${data.aboutMe ? `
@@ -341,10 +381,12 @@ ${data.enablePetals ? '<div class="petals" id="petals" aria-hidden="true"></div>
       ${data.birthTime ? `<div class="item"><div class="k">Birth Time</div><div class="v">${escapeHtml(data.birthTime)}</div></div>` : ''}
       ${data.birthPlace ? `<div class="item"><div class="k">Birth Place</div><div class="v">${escapeHtml(data.birthPlace)}</div></div>` : ''}
       <div class="item"><div class="k">Age</div><div class="v">${age} years</div></div>
-      ${data.height ? `<div class="item"><div class="k">Height</div><div class="v">${escapeHtml(data.height)}</div></div>` : ''}
+      ${formattedHeight ? `<div class="item"><div class="k">Height</div><div class="v">${escapeHtml(formattedHeight)}</div></div>` : ''}
       ${data.manglik ? `<div class="item"><div class="k">Manglik</div><div class="v"><span class="badge">${escapeHtml(data.manglik)}</span></div></div>` : ''}
       ${data.gotra ? `<div class="item"><div class="k">Gotra</div><div class="v">${escapeHtml(data.gotra)}</div></div>` : ''}
       ${data.rashi ? `<div class="item"><div class="k">Rashi</div><div class="v">${escapeHtml(data.rashi)}</div></div>` : ''}
+      ${data.nakshatra ? `<div class="item"><div class="k">Nakshatra</div><div class="v">${escapeHtml(data.nakshatra)}</div></div>` : ''}
+      ${data.complexion ? `<div class="item"><div class="k">Complexion</div><div class="v">${escapeHtml(data.complexion)}</div></div>` : ''}
     </div>
   </section>
 

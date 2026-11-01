@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import KalashSvg from './KalashSvg';
 import { MandalaSvg, SuryaRaysSvg, VanshSunIcon } from './MandalaRaysSvg';
-import { THEMES } from '../themes';
+import { getResolvedTheme } from '../themes';
 import { 
   Heart, 
   User, 
@@ -13,13 +13,17 @@ import {
   MapPin, 
   Home, 
   Share2, 
-  Printer 
+  Printer,
+  Camera,
+  X
 } from 'lucide-react';
 
 export default function BiodataPreview({ data, previewMode = 'desktop' }) {
   const theme = useMemo(() => {
-    return THEMES.find(t => t.id === data.themeId) || THEMES[0];
-  }, [data.themeId]);
+    return getResolvedTheme(data);
+  }, [data.themeId, data.customTheme]);
+
+  const [activeModalImage, setActiveModalImage] = useState(null);
 
   // Calculate live age from DOB
   const calculatedAge = useMemo(() => {
@@ -42,8 +46,27 @@ export default function BiodataPreview({ data, previewMode = 'desktop' }) {
     return '28';
   }, [data.dob]);
 
-  const defaultAvatar = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=600&h=750&q=80";
-  const photoSrc = data.photoUrl || defaultAvatar;
+  // Height formatting (ft/in + cm)
+  const formattedHeight = useMemo(() => {
+    if (data.height && data.heightCm) {
+      return `${data.height} (${data.heightCm} cm)`;
+    }
+    if (data.height) return data.height;
+    if (data.heightCm) return `${data.heightCm} cm`;
+    return "5'8\" (173 cm)";
+  }, [data.height, data.heightCm]);
+
+  // Multiple photos resolution
+  const photoList = useMemo(() => {
+    if (Array.isArray(data.photoUrls) && data.photoUrls.length > 0) {
+      return data.photoUrls;
+    }
+    if (data.photoUrl) return [data.photoUrl];
+    return ["https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=600&h=750&q=80"];
+  }, [data.photoUrls, data.photoUrl]);
+
+  const primaryPhoto = photoList[0];
+  const additionalPhotos = photoList.slice(1);
 
   // Responsive wrapper styling
   const wrapperWidth = previewMode === 'mobile' 
@@ -107,17 +130,19 @@ export default function BiodataPreview({ data, previewMode = 'desktop' }) {
             
             {/* The Arch Frame */}
             <div 
-              className="relative w-full h-full overflow-hidden border-4 shadow-2xl z-10"
+              onClick={() => setActiveModalImage(primaryPhoto)}
+              className="relative w-full h-full overflow-hidden border-4 shadow-2xl z-10 cursor-pointer group"
               style={{
                 borderRadius: '50% 50% 18px 18px / 40% 40% 18px 18px',
                 borderColor: theme.goldLight,
                 boxShadow: `0 0 0 3px rgba(255,255,255,0.35), 0 0 0 9px rgba(243,211,138,0.22), 0 0 40px rgba(255,200,100,0.65), 0 16px 32px rgba(0,0,0,0.4)`
               }}
+              title="Click to view full photo"
             >
               <img 
-                src={photoSrc} 
+                src={primaryPhoto} 
                 alt={data.fullName}
-                className="w-full h-full object-cover object-top"
+                className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
               />
             </div>
           </div>
@@ -153,9 +178,9 @@ export default function BiodataPreview({ data, previewMode = 'desktop' }) {
             <span className="inline-flex items-center px-3.5 py-1.5 rounded-full bg-white/15 border border-amber-200/40 text-amber-50 backdrop-blur-sm">
               <b className="text-amber-300 font-semibold mr-1">{calculatedAge}</b> years
             </span>
-            {data.height && (
+            {formattedHeight && (
               <span className="inline-flex items-center px-3.5 py-1.5 rounded-full bg-white/15 border border-amber-200/40 text-amber-50 backdrop-blur-sm">
-                <b className="text-amber-300 font-semibold mr-1">{data.height}</b> height
+                <b className="text-amber-300 font-semibold mr-1">{formattedHeight}</b>
               </span>
             )}
             {data.birthPlace && (
@@ -172,6 +197,60 @@ export default function BiodataPreview({ data, previewMode = 'desktop' }) {
             )}
           </div>
         </header>
+
+        {/* Section: Multiple Photographs Gallery (if more than 1 photo uploaded) */}
+        {additionalPhotos.length > 0 && (
+          <section 
+            className="relative mt-6 rounded-2xl p-6 border shadow-md transition-all print-break-inside-avoid"
+            style={{ 
+              backgroundColor: theme.cardBg, 
+              borderColor: theme.borderColor 
+            }}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div 
+                className="w-10 h-10 rounded-xl grid place-items-center text-white shadow-sm flex-none"
+                style={{ background: `linear-gradient(135deg, ${theme.secondary}, ${theme.primary})` }}
+              >
+                <Camera className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="font-serif text-xl font-bold" style={{ color: theme.headerColor }}>
+                  Photo Gallery
+                </h2>
+                <small className="block font-sans text-xs uppercase tracking-widest text-amber-700 font-semibold">
+                  Additional Photographs ({photoList.length} total)
+                </small>
+              </div>
+              <div className="flex-1 h-[2px] ml-2 bg-gradient-to-r from-amber-200 to-transparent" />
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+              {photoList.map((imgUrl, idx) => (
+                <div 
+                  key={idx}
+                  onClick={() => setActiveModalImage(imgUrl)}
+                  className="group relative aspect-[4/5] rounded-xl overflow-hidden border-2 cursor-pointer shadow-sm hover:shadow-lg transition-all"
+                  style={{ borderColor: idx === 0 ? theme.accentGold : theme.borderColor }}
+                >
+                  <img 
+                    src={imgUrl} 
+                    alt={`Candidate photo ${idx + 1}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  {idx === 0 && (
+                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500 text-stone-950 shadow-sm">
+                      Portrait Arch
+                    </span>
+                  )}
+                  <div className="absolute inset-0 bg-stone-950/20 opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center text-white text-xs font-medium">
+                    <span>View Photo</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Section: About Me */}
         {data.aboutMe && (
@@ -254,10 +333,10 @@ export default function BiodataPreview({ data, previewMode = 'desktop' }) {
               <span className="text-[11px] uppercase tracking-wider font-semibold text-amber-700 block">Age</span>
               <span className="font-medium text-stone-800 text-sm md:text-base">{calculatedAge} years</span>
             </div>
-            {data.height && (
+            {formattedHeight && (
               <div className="p-3 rounded-xl bg-gradient-to-b from-white to-amber-50/40 border border-amber-100">
                 <span className="text-[11px] uppercase tracking-wider font-semibold text-amber-700 block">Height</span>
-                <span className="font-medium text-stone-800 text-sm md:text-base">{data.height}</span>
+                <span className="font-medium text-stone-800 text-sm md:text-base">{formattedHeight}</span>
               </div>
             )}
             {data.manglik && (
@@ -284,6 +363,12 @@ export default function BiodataPreview({ data, previewMode = 'desktop' }) {
               <div className="p-3 rounded-xl bg-gradient-to-b from-white to-amber-50/40 border border-amber-100">
                 <span className="text-[11px] uppercase tracking-wider font-semibold text-amber-700 block">Nakshatra</span>
                 <span className="font-medium text-stone-800 text-sm md:text-base">{data.nakshatra}</span>
+              </div>
+            )}
+            {data.complexion && (
+              <div className="p-3 rounded-xl bg-gradient-to-b from-white to-amber-50/40 border border-amber-100">
+                <span className="text-[11px] uppercase tracking-wider font-semibold text-amber-700 block">Complexion</span>
+                <span className="font-medium text-stone-800 text-sm md:text-base">{data.complexion}</span>
               </div>
             )}
           </div>
@@ -597,6 +682,29 @@ export default function BiodataPreview({ data, previewMode = 'desktop' }) {
           </button>
         </div>
       </div>
+
+      {/* Image Modal Lightbox */}
+      {activeModalImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 no-print"
+          onClick={() => setActiveModalImage(null)}
+        >
+          <div className="relative max-w-2xl max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl border-2 border-amber-400">
+            <button
+              type="button"
+              onClick={() => setActiveModalImage(null)}
+              className="absolute top-3 right-3 p-2 rounded-full bg-black/60 text-white hover:bg-black transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img 
+              src={activeModalImage} 
+              alt="Enlarged view" 
+              className="w-full h-auto max-h-[85vh] object-contain bg-stone-950" 
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

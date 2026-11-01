@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { THEMES, SHLOKA_PRESETS } from '../../themes';
+import InfoTooltip from '../InfoTooltip';
 import { 
   Palette, 
   User, 
@@ -13,7 +14,10 @@ import {
   Trash2, 
   Check,
   Calendar,
-  Layers
+  Layers,
+  Star,
+  Sliders,
+  Camera
 } from 'lucide-react';
 
 export default function FormEditor({ data, onChange }) {
@@ -33,16 +37,65 @@ export default function FormEditor({ data, onChange }) {
     });
   };
 
-  // Photo upload handler converting file to base64
-  const handlePhotoUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  const updateCustomColor = (colorKey, colorVal) => {
+    onChange({
+      ...data,
+      themeId: 'custom',
+      customTheme: {
+        ...(data.customTheme || {
+          primary: '#7a1f2b',
+          secondary: '#f28c28',
+          accentGold: '#c9962b',
+          goldLight: '#f3d38a',
+          bgCream: '#fff8ec'
+        }),
+        [colorKey]: colorVal
+      }
+    });
+  };
+
+  // Multiple Photos Upload Handler
+  const handleMultiplePhotoUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const existingPhotos = Array.isArray(data.photoUrls) ? [...data.photoUrls] : (data.photoUrl ? [data.photoUrl] : []);
+
+    files.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        updateField('photoUrl', reader.result);
+        if (reader.result) {
+          existingPhotos.push(reader.result);
+          onChange({
+            ...data,
+            photoUrls: [...existingPhotos],
+            photoUrl: existingPhotos[0] || ''
+          });
+        }
       };
       reader.readAsDataURL(file);
-    }
+    });
+  };
+
+  const setPrimaryPhoto = (index) => {
+    if (!data.photoUrls || index >= data.photoUrls.length) return;
+    const reordered = [...data.photoUrls];
+    const [selected] = reordered.splice(index, 1);
+    reordered.unshift(selected);
+    onChange({
+      ...data,
+      photoUrls: reordered,
+      photoUrl: reordered[0]
+    });
+  };
+
+  const removePhoto = (index) => {
+    const filtered = (data.photoUrls || []).filter((_, i) => i !== index);
+    onChange({
+      ...data,
+      photoUrls: filtered,
+      photoUrl: filtered[0] || ''
+    });
   };
 
   // DOB handler that also formats date nicely
@@ -67,12 +120,53 @@ export default function FormEditor({ data, onChange }) {
     });
   };
 
+  // Height conversion handlers (Feet/Inches <-> cm)
+  const handleFeetInchesChange = (ft, inch) => {
+    const feetNum = parseInt(ft) || 0;
+    const inchNum = parseInt(inch) || 0;
+    const totalInches = (feetNum * 12) + inchNum;
+    const cm = totalInches > 0 ? Math.round(totalInches * 2.54) : '';
+    const heightStr = `${feetNum}'${inchNum}"`;
+
+    onChange({
+      ...data,
+      height: heightStr,
+      heightCm: String(cm)
+    });
+  };
+
+  const handleCmChange = (cmVal) => {
+    const cmNum = parseInt(cmVal) || 0;
+    let heightStr = data.height || '';
+    if (cmNum > 0) {
+      const totalInches = cmNum / 2.54;
+      const feet = Math.floor(totalInches / 12);
+      const inches = Math.round(totalInches % 12);
+      heightStr = `${feet}'${inches}"`;
+    }
+    onChange({
+      ...data,
+      heightCm: cmVal,
+      height: heightStr
+    });
+  };
+
+  // Extract current feet and inches from data.height string (e.g. 5'8")
+  const currentFeet = (() => {
+    const match = (data.height || '').match(/(\d+)'/);
+    return match ? match[1] : '5';
+  })();
+  const currentInches = (() => {
+    const match = (data.height || '').match(/'(\d+)"/);
+    return match ? match[1] : '8';
+  })();
+
   // Career timeline repeater handlers
   const addCareerItem = () => {
     const newItem = {
       id: Date.now().toString(),
-      title: 'New Role / Degree',
-      subtitle: 'Company / University'
+      title: '',
+      subtitle: ''
     };
     updateField('careerItems', [...(data.careerItems || []), newItem]);
   };
@@ -92,10 +186,10 @@ export default function FormEditor({ data, onChange }) {
   const addFamilyMember = () => {
     const newMember = {
       id: Date.now().toString(),
-      generation: 'Family',
-      relation: 'Sibling / Relative',
-      name: 'Name',
-      role: 'Occupation',
+      generation: 'Parents',
+      relation: '',
+      name: '',
+      role: '',
       isLate: false
     };
     updateField('familyMembers', [...(data.familyMembers || []), newMember]);
@@ -139,14 +233,18 @@ export default function FormEditor({ data, onChange }) {
   };
 
   const tabs = [
-    { id: 'theme', label: 'Theme & Shloka', icon: Palette },
-    { id: 'identity', label: 'Basics & Photo', icon: User },
+    { id: 'theme', label: 'Theme & Colors', icon: Palette },
+    { id: 'identity', label: 'Photos & Identity', icon: User },
     { id: 'personal', label: 'Janma & Kundali', icon: Calendar },
     { id: 'about', label: 'About & Hobbies', icon: Heart },
     { id: 'career', label: 'Education & Career', icon: GraduationCap },
-    { id: 'family', label: 'Family Details', icon: Users },
+    { id: 'family', label: 'Family (Parivar)', icon: Users },
     { id: 'contact', label: 'Contact & Addresses', icon: Phone },
   ];
+
+  const photoList = Array.isArray(data.photoUrls) && data.photoUrls.length > 0 
+    ? data.photoUrls 
+    : (data.photoUrl ? [data.photoUrl] : []);
 
   return (
     <div className="flex flex-col h-full bg-white border-r border-stone-200">
@@ -174,14 +272,25 @@ export default function FormEditor({ data, onChange }) {
 
       {/* Tab Panels */}
       <div className="flex-1 overflow-y-auto p-5 space-y-6">
-        {/* TAB 1: THEME & SACRED BLESSINGS */}
+        {/* TAB 1: THEME & COLOR PALETTE */}
         {activeTab === 'theme' && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider mb-3">
-                1. Select Royal Theme
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center">
+                  <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                    1. Royal Themes &amp; Custom Palette
+                  </h3>
+                  <InfoTooltip 
+                    title="Themes & Color Palettes"
+                    text="Choose from our 5 heritage Indian royal palettes or craft your own personalized custom color combination."
+                    example="Select 'Custom Palette' below to pick your own primary maroon, emerald, navy, or royal purple color!"
+                  />
+                </div>
+              </div>
+
+              {/* Preset Theme Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {THEMES.map((theme) => {
                   const isSelected = data.themeId === theme.id;
                   return (
@@ -195,27 +304,149 @@ export default function FormEditor({ data, onChange }) {
                       }`}
                     >
                       <div 
-                        className="w-10 h-10 rounded-xl flex-none flex items-center justify-center text-white shadow-sm"
+                        className="w-9 h-9 rounded-xl flex-none flex items-center justify-center text-white shadow-sm"
                         style={{ background: theme.heroBg }}
                       >
-                        {isSelected && <Check className="w-5 h-5 stroke-[3]" />}
+                        {isSelected && <Check className="w-4 h-4 stroke-[3]" />}
                       </div>
                       <div className="min-w-0">
-                        <div className="font-semibold text-stone-900 text-sm truncate">{theme.name}</div>
-                        <div className="text-xs text-stone-500 truncate">{theme.subtitle}</div>
+                        <div className="font-semibold text-stone-900 text-xs md:text-sm truncate">{theme.name}</div>
+                        <div className="text-[11px] text-stone-500 truncate">{theme.subtitle}</div>
                       </div>
                     </button>
                   );
                 })}
+
+                {/* Custom Palette Option */}
+                <button
+                  type="button"
+                  onClick={() => updateField('themeId', 'custom')}
+                  className={`flex items-center gap-3 p-3 rounded-2xl border text-left transition-all ${
+                    data.themeId === 'custom' 
+                      ? 'border-amber-600 ring-2 ring-amber-500/30 bg-amber-50/40' 
+                      : 'border-dashed border-stone-300 hover:border-stone-400 bg-white'
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-xl flex-none flex items-center justify-center text-amber-700 bg-amber-100 shadow-sm">
+                    <Sliders className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-stone-900 text-xs md:text-sm">Custom Color Palette</div>
+                    <div className="text-[11px] text-stone-500">Pick your own hex colors</div>
+                  </div>
+                </button>
               </div>
+
+              {/* Interactive Color Pickers (Shown if Custom Palette is active or user wants to customize) */}
+              {data.themeId === 'custom' && (
+                <div className="mt-4 p-4 rounded-2xl border border-amber-300 bg-amber-50/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-900">
+                      Customize Palette Colors
+                    </span>
+                    <span className="text-[10px] text-amber-700 font-medium">Live sync with preview</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="text-[11px] font-semibold text-stone-700 block mb-1">
+                        Primary Regal Shade
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={data.customTheme?.primary || '#7a1f2b'}
+                          onChange={(e) => updateCustomColor('primary', e.target.value)}
+                          className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={data.customTheme?.primary || '#7a1f2b'}
+                          onChange={(e) => updateCustomColor('primary', e.target.value)}
+                          className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-semibold text-stone-700 block mb-1">
+                        Accent Gold
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={data.customTheme?.accentGold || '#c9962b'}
+                          onChange={(e) => updateCustomColor('accentGold', e.target.value)}
+                          className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={data.customTheme?.accentGold || '#c9962b'}
+                          onChange={(e) => updateCustomColor('accentGold', e.target.value)}
+                          className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-semibold text-stone-700 block mb-1">
+                        Secondary Warmth
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={data.customTheme?.secondary || '#f28c28'}
+                          onChange={(e) => updateCustomColor('secondary', e.target.value)}
+                          className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={data.customTheme?.secondary || '#f28c28'}
+                          onChange={(e) => updateCustomColor('secondary', e.target.value)}
+                          className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-semibold text-stone-700 block mb-1">
+                        Background Tint
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={data.customTheme?.bgCream || '#fff8ec'}
+                          onChange={(e) => updateCustomColor('bgCream', e.target.value)}
+                          className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5"
+                        />
+                        <input
+                          type="text"
+                          value={data.customTheme?.bgCream || '#fff8ec'}
+                          onChange={(e) => updateCustomColor('bgCream', e.target.value)}
+                          className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Sacred Shloka Section */}
             <div className="border-t border-stone-200 pt-5">
-              <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider mb-3">
-                2. Sacred Shloka / Blessing
-              </h3>
+              <div className="flex items-center mb-3">
+                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                  2. Sacred Shloka / Blessing
+                </h3>
+                <InfoTooltip 
+                  title="Auspicious Shloka / Blessing"
+                  text="Traditional Hindu biodatas open with an auspicious invocation to Lord Ganesha, Radha-Krishna, or Kuldevi/Kuldevta."
+                  example="॥ श्री गणेशाय नमः ॥ or ॥ श्री राधा-कृष्णाभ्यां नमः ॥"
+                />
+              </div>
+
               <div className="space-y-2">
-                <label className="text-xs text-stone-600 font-medium">Choose a Preset Blessing:</label>
+                <label className="text-xs text-stone-600 font-medium">Select a Preset Blessing:</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {SHLOKA_PRESETS.map((preset) => (
                     <button
@@ -234,22 +465,31 @@ export default function FormEditor({ data, onChange }) {
                   ))}
                 </div>
                 <div className="mt-3">
-                  <label className="text-xs text-stone-600 font-medium">Or type a Custom Shloka:</label>
+                  <label className="text-xs text-stone-600 font-medium">Or type a Custom Shloka / Blessing:</label>
                   <input
                     type="text"
                     value={data.shloka}
                     onChange={(e) => updateField('shloka', e.target.value)}
+                    placeholder="e.g. ॥ ॐ श्री गणेशाय नमः ॥ or ॥ ॐ नमो भगवते वासुदेवाय ॥"
                     className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 font-sanskrit"
                   />
                 </div>
               </div>
             </div>
 
+            {/* Visual Embellishments */}
             <div className="border-t border-stone-200 pt-5">
-              <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider mb-3">
-                3. Visual Embellishments
-              </h3>
-              <div className="space-y-3">
+              <div className="flex items-center mb-3">
+                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                  3. Visual Embellishments
+                </h3>
+                <InfoTooltip 
+                  title="Animations & Background Accents"
+                  text="Toggle falling rose and marigold petals, radiant golden Surya rays, and traditional rotating mandalas."
+                />
+              </div>
+
+              <div className="space-y-2.5">
                 <label className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 cursor-pointer hover:bg-stone-50">
                   <input
                     type="checkbox"
@@ -293,52 +533,99 @@ export default function FormEditor({ data, onChange }) {
           </div>
         )}
 
-        {/* TAB 2: PROFILE & PHOTO */}
+        {/* TAB 2: MULTIPLE PHOTOS & CANDIDATE IDENTITY */}
         {activeTab === 'identity' && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider mb-2">
-              Candidate Photo & Basics
-            </h3>
-
-            {/* Photo Upload */}
-            <div className="p-4 rounded-2xl border-2 border-dashed border-stone-300 bg-stone-50/50 flex flex-col items-center text-center">
-              {data.photoUrl ? (
-                <div className="relative mb-3">
-                  <img
-                    src={data.photoUrl}
-                    alt="Preview"
-                    className="w-24 h-32 object-cover rounded-xl border-2 border-amber-500 shadow-md"
+          <div className="space-y-5">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center">
+                  <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                    Candidate Photographs ({photoList.length} Uploaded)
+                  </h3>
+                  <InfoTooltip 
+                    title="Multiple Candidate Photos"
+                    text="You can upload multiple high-resolution photos! The first photo is framed in the royal golden arch. Additional photos are automatically showcased in an elegant Photo Gallery card."
+                    example="Click 'Set as Arch' to pick which photo sits at the top!"
                   />
-                  <button
-                    type="button"
-                    onClick={() => updateField('photoUrl', '')}
-                    className="absolute -top-2 -right-2 p-1 rounded-full bg-red-600 text-white shadow-sm hover:bg-red-700"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
                 </div>
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-amber-100 grid place-items-center text-amber-700 mb-2">
-                  <Upload className="w-7 h-7" />
-                </div>
-              )}
-              <label className="cursor-pointer px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shadow-sm transition-all">
-                <span>{data.photoUrl ? 'Change Photograph' : 'Upload Candidate Photograph'}</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
-              </label>
-              <p className="text-[11px] text-stone-500 mt-2">
-                Supports JPG, PNG or WEBP (auto-fits gracefully into the golden arch).
-              </p>
+              </div>
+
+              {/* Photos Grid & Upload Button */}
+              <div className="space-y-3">
+                {photoList.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {photoList.map((url, idx) => (
+                      <div 
+                        key={idx}
+                        className={`relative aspect-[4/5] rounded-xl overflow-hidden border-2 shadow-xs group ${
+                          idx === 0 ? 'border-amber-500 ring-2 ring-amber-400/30' : 'border-stone-200'
+                        }`}
+                      >
+                        <img 
+                          src={url} 
+                          alt={`Uploaded ${idx + 1}`} 
+                          className="w-full h-full object-cover"
+                        />
+                        {idx === 0 ? (
+                          <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-stone-950 shadow-sm flex items-center gap-1">
+                            <Star className="w-3 h-3 fill-stone-950" />
+                            Arch Portrait
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setPrimaryPhoto(idx)}
+                            className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-900/80 hover:bg-amber-600 text-white shadow-sm transition-all"
+                            title="Set as main arch portrait"
+                          >
+                            Set as Arch
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(idx)}
+                          className="absolute top-1.5 right-1.5 p-1 rounded-full bg-red-600/90 text-white shadow-sm hover:bg-red-700 transition-all opacity-80 group-hover:opacity-100"
+                          title="Remove photo"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload Button */}
+                <label className="cursor-pointer flex flex-col items-center justify-center p-4 border-2 border-dashed border-amber-300 rounded-2xl bg-amber-50/40 hover:bg-amber-50 transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 grid place-items-center mb-1 shadow-xs">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-amber-900">
+                    {photoList.length > 0 ? '+ Add More Photographs' : 'Upload Candidate Photographs'}
+                  </span>
+                  <span className="text-[11px] text-stone-500 mt-0.5">
+                    Select 1 or multiple photos (JPG, PNG, WEBP)
+                  </span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleMultiplePhotoUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
             </div>
 
             {/* Full Name */}
-            <div>
-              <label className="text-xs font-semibold text-stone-700">Full Name *</label>
+            <div className="border-t border-stone-200 pt-4">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-stone-700">Full Name *</label>
+                <InfoTooltip 
+                  title="Full Name Format"
+                  text="Enter candidate's complete official name. Professional prefixes (e.g. Er., Dr., CA) can be included."
+                  example="e.g. Abhijeet B. Singh or Dr. Ananya Sharma"
+                />
+              </div>
               <input
                 type="text"
                 value={data.fullName}
@@ -348,16 +635,23 @@ export default function FormEditor({ data, onChange }) {
               />
             </div>
 
-            {/* Vansh / Community Badge */}
+            {/* Vansh / Lineage / Community Badge */}
             <div>
-              <label className="text-xs font-semibold text-stone-700">
-                Community / Lineage / Vansh (optional)
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-stone-700">
+                  Community / Lineage / Vansh (optional)
+                </label>
+                <InfoTooltip 
+                  title="Vansh & Community Emblem"
+                  text="Prominently displays the candidate's traditional lineage or community (e.g., Raghuvanshi, Suryavanshi, Kanyakubj, Maratha, etc.) with a sacred sun emblem."
+                  example="e.g. रघुवंशी or Kshatriya or Sharma"
+                />
+              </div>
               <input
                 type="text"
                 value={data.communityBadge}
                 onChange={(e) => updateField('communityBadge', e.target.value)}
-                placeholder="e.g. रघुवंशी or Kshatriya or Sharma"
+                placeholder="e.g. रघुवंशी (or Kshatriya / Kanyakubj Brahmin / Maratha)"
                 className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
               />
               <span className="text-[11px] text-stone-500">Displays with a sacred solar emblem beneath the name.</span>
@@ -365,31 +659,51 @@ export default function FormEditor({ data, onChange }) {
 
             {/* Tagline / Subtitle */}
             <div>
-              <label className="text-xs font-semibold text-stone-700">
-                Subtitle Tagline (Profession & Location)
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-stone-700">
+                  Subtitle Tagline (Profession &amp; City)
+                </label>
+                <InfoTooltip 
+                  title="Subtitle / Header Summary"
+                  text="Quick summary beneath the name showing qualification, current company/designation, and location."
+                  example="e.g. Computer Engineer · Infosys · Mumbai"
+                />
+              </div>
               <input
                 type="text"
                 value={data.profileTagline}
                 onChange={(e) => updateField('profileTagline', e.target.value)}
-                placeholder="e.g. Computer Engineer · Infosys · Mumbai"
+                placeholder="e.g. Software Engineer · Infosys Ltd. · Mumbai"
                 className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
               />
             </div>
           </div>
         )}
 
-        {/* TAB 3: JANMA & KUNDALI */}
+        {/* TAB 3: JANMA & KUNDALI (with Height in cm + Ft/In) */}
         {activeTab === 'personal' && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider mb-2">
-              Horoscope & Personal Profile
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                Horoscope &amp; Personal Profile
+              </h3>
+              <InfoTooltip 
+                title="Janma & Kundali Details"
+                text="Crucial astrological and physical details used for Kundali Milan (horoscope matching) and compatibility verification."
+              />
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {/* DOB */}
               <div>
-                <label className="text-xs font-semibold text-stone-700">Date of Birth</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-stone-700">Date of Birth</label>
+                  <InfoTooltip 
+                    title="Date of Birth"
+                    text="Used to automatically calculate the candidate's exact age in years."
+                    example="e.g. 1998-05-22"
+                  />
+                </div>
                 <input
                   type="date"
                   value={data.dob}
@@ -400,7 +714,14 @@ export default function FormEditor({ data, onChange }) {
 
               {/* Formatted Date */}
               <div>
-                <label className="text-xs font-semibold text-stone-700">Display Date</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-stone-700">Display Date of Birth</label>
+                  <InfoTooltip 
+                    title="Display Date Format"
+                    text="The readable date formatted for the final biodata card."
+                    example="e.g. 22 May 1998"
+                  />
+                </div>
                 <input
                   type="text"
                   value={data.dobFormatted}
@@ -412,43 +733,108 @@ export default function FormEditor({ data, onChange }) {
 
               {/* Birth Time */}
               <div>
-                <label className="text-xs font-semibold text-stone-700">Birth Time</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-stone-700">Birth Time</label>
+                  <InfoTooltip 
+                    title="Exact Birth Time"
+                    text="Essential for casting the exact Lagna Kundali and Navamsha chart."
+                    example="e.g. 09:30 AM (IST)"
+                  />
+                </div>
                 <input
                   type="text"
                   value={data.birthTime}
                   onChange={(e) => updateField('birthTime', e.target.value)}
-                  placeholder="e.g. 09:30 AM"
+                  placeholder="e.g. 09:30 AM (or 14:15 Hrs)"
                   className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
               {/* Birth Place */}
               <div>
-                <label className="text-xs font-semibold text-stone-700">Birth Place</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-stone-700">Birth Place (City, State)</label>
+                  <InfoTooltip 
+                    title="Birth Place"
+                    text="City and state where candidate was born, needed for astrological coordinates."
+                    example="e.g. Varanasi, Uttar Pradesh"
+                  />
+                </div>
                 <input
                   type="text"
                   value={data.birthPlace}
                   onChange={(e) => updateField('birthPlace', e.target.value)}
-                  placeholder="e.g. Varanasi, U.P."
+                  placeholder="e.g. Varanasi, Uttar Pradesh"
                   className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
-              {/* Height */}
-              <div>
-                <label className="text-xs font-semibold text-stone-700">Height</label>
-                <input
-                  type="text"
-                  value={data.height}
-                  onChange={(e) => updateField('height', e.target.value)}
-                  placeholder={`e.g. 5'8"`}
-                  className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
-                />
+              {/* DUAL HEIGHT BUILDER: Feet/Inches & cm */}
+              <div className="sm:col-span-2 p-3 rounded-2xl border border-amber-200 bg-amber-50/30">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                    Candidate Height (Feet &amp; cm)
+                  </label>
+                  <InfoTooltip 
+                    title="Height in Feet & cm"
+                    text="Specify height in Feet & Inches or cm. Changing either automatically calculates the other and displays both (e.g. 5'8&quot; (173 cm))."
+                    example="e.g. 5 Feet 8 Inches = 173 cm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[11px] text-stone-600 block mb-0.5">Feet</label>
+                    <select
+                      value={currentFeet}
+                      onChange={(e) => handleFeetInchesChange(e.target.value, currentInches)}
+                      className="w-full px-2 py-1.5 text-sm border border-stone-300 rounded-xl bg-white"
+                    >
+                      {[4, 5, 6, 7].map(f => (
+                        <option key={f} value={f}>{f} ft</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-stone-600 block mb-0.5">Inches</label>
+                    <select
+                      value={currentInches}
+                      onChange={(e) => handleFeetInchesChange(currentFeet, e.target.value)}
+                      className="w-full px-2 py-1.5 text-sm border border-stone-300 rounded-xl bg-white"
+                    >
+                      {Array.from({ length: 12 }).map((_, idx) => (
+                        <option key={idx} value={idx}>{idx} in</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] text-stone-600 block mb-0.5">Height (in cm)</label>
+                    <input
+                      type="number"
+                      value={data.heightCm || ''}
+                      onChange={(e) => handleCmChange(e.target.value)}
+                      placeholder="e.g. 173"
+                      className="w-full px-2 py-1.5 text-sm border border-stone-300 rounded-xl bg-white"
+                    />
+                  </div>
+                </div>
+                <div className="text-[11px] text-amber-800 font-medium mt-1.5 text-right">
+                  Preview display: <span className="font-bold">{data.height} {data.heightCm ? `(${data.heightCm} cm)` : ''}</span>
+                </div>
               </div>
 
               {/* Manglik */}
               <div>
-                <label className="text-xs font-semibold text-stone-700">Manglik Status</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-stone-700">Manglik Status</label>
+                  <InfoTooltip 
+                    title="Manglik / Mars Dosha"
+                    text="Placement of Mars (Mangal) in 1st, 2nd, 4th, 7th, 8th, or 12th house. Select Non-Manglik, Manglik, or Anshik (partial)."
+                    example="Select 'No (Non-Manglik)' if not Manglik."
+                  />
+                </div>
                 <select
                   value={data.manglik}
                   onChange={(e) => updateField('manglik', e.target.value)}
@@ -456,55 +842,83 @@ export default function FormEditor({ data, onChange }) {
                 >
                   <option value="No">No (Non-Manglik)</option>
                   <option value="Yes">Yes (Manglik)</option>
-                  <option value="Anshik">Anshik Manglik</option>
-                  <option value="Don't Know">Don't Know</option>
+                  <option value="Anshik">Anshik Manglik (Partial)</option>
+                  <option value="Don't Know">Don't Know / To be verified</option>
                 </select>
               </div>
 
               {/* Gotra */}
               <div>
-                <label className="text-xs font-semibold text-stone-700">Gotra</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-stone-700">Paternal Gotra</label>
+                  <InfoTooltip 
+                    title="Paternal Gotra"
+                    text="The ancestral Vedic lineage traced from Rishis (e.g. Kashyap, Bhardwaj, Vashishtha, Shandilya)."
+                    example="e.g. Kashyap"
+                  />
+                </div>
                 <input
                   type="text"
                   value={data.gotra}
                   onChange={(e) => updateField('gotra', e.target.value)}
-                  placeholder="e.g. Kashyap"
+                  placeholder="e.g. Kashyap (or Bhardwaj / Vashishtha)"
                   className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
               {/* Rashi */}
               <div>
-                <label className="text-xs font-semibold text-stone-700">Rashi</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-stone-700">Rashi (Zodiac / Moon Sign)</label>
+                  <InfoTooltip 
+                    title="Janma Rashi"
+                    text="Moon sign at time of birth (e.g. Mesh, Vrishabha, Mithun, Kark, Singh, Kanya, Tula, Vrishchik, Dhanu, Makar, Kumbh, Meen)."
+                    example="e.g. Mesh (Aries)"
+                  />
+                </div>
                 <input
                   type="text"
                   value={data.rashi}
                   onChange={(e) => updateField('rashi', e.target.value)}
-                  placeholder="e.g. Mesh (Aries)"
+                  placeholder="e.g. Mesh (Aries) or Kanya (Virgo)"
                   className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
               {/* Nakshatra */}
               <div>
-                <label className="text-xs font-semibold text-stone-700">Nakshatra</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-stone-700">Nakshatra &amp; Charan</label>
+                  <InfoTooltip 
+                    title="Birth Star (Nakshatra)"
+                    text="Birth constellation and quarter (Charan) used for Guna Milan (e.g. Rohini, Ashwini, Bharani, Swati)."
+                    example="e.g. Bharani (Charan 2)"
+                  />
+                </div>
                 <input
                   type="text"
                   value={data.nakshatra}
                   onChange={(e) => updateField('nakshatra', e.target.value)}
-                  placeholder="e.g. Bharani"
+                  placeholder="e.g. Bharani (Charan 2) or Rohini"
                   className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
               {/* Complexion */}
               <div>
-                <label className="text-xs font-semibold text-stone-700">Complexion</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-stone-700">Complexion</label>
+                  <InfoTooltip 
+                    title="Skin Tone / Complexion"
+                    text="General physical appearance / complexion."
+                    example="e.g. Wheatish or Fair"
+                  />
+                </div>
                 <input
                   type="text"
                   value={data.complexion}
                   onChange={(e) => updateField('complexion', e.target.value)}
-                  placeholder="e.g. Fair / Wheatish"
+                  placeholder="e.g. Wheatish / Fair / Medium"
                   className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
                 />
               </div>
@@ -515,26 +929,40 @@ export default function FormEditor({ data, onChange }) {
         {/* TAB 4: ABOUT & HOBBIES */}
         {activeTab === 'about' && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider mb-2">
-              Introduction & Lifestyle
-            </h3>
-
             <div>
-              <label className="text-xs font-semibold text-stone-700">About Me Bio</label>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                  Introduction &amp; Lifestyle
+                </h3>
+                <InfoTooltip 
+                  title="About Me Bio"
+                  text="Write an authentic, balanced introduction covering values, educational journey, personal interests, and family bonding."
+                  example="Mention your perspective on life, passions, and cultural roots."
+                />
+              </div>
+
               <textarea
                 rows={4}
                 value={data.aboutMe}
                 onChange={(e) => updateField('aboutMe', e.target.value)}
-                placeholder="Write a warm, authentic intro describing your values, outlook, and interests..."
-                className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                placeholder="e.g. I appreciate the beauty of diverse experiences and hold my family, friends, and personal interests in high regard. My academic journey led me to pursue a degree in Computer Science..."
+                className="w-full mt-2 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
               />
             </div>
 
             {/* Hobbies */}
             <div className="border-t border-stone-200 pt-4">
-              <label className="text-xs font-semibold text-stone-700 block mb-2">
-                Hobbies &amp; Interests
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-stone-700">
+                  Hobbies &amp; Interests
+                </label>
+                <InfoTooltip 
+                  title="Hobbies & Interests"
+                  text="Add your favorite sports, musical tastes, cultural practices, travel, and books with emojis!"
+                  example="🏏 Playing Cricket, 🎵 Classical Music, 🛕 Visiting Heritage Temples"
+                />
+              </div>
+
               <div className="flex flex-wrap gap-2 mb-3">
                 {(data.hobbies || []).map((h, idx) => (
                   <span
@@ -563,7 +991,7 @@ export default function FormEditor({ data, onChange }) {
                 />
                 <input
                   type="text"
-                  placeholder="e.g. Classical Dance or Cricket"
+                  placeholder="e.g. Playing Badminton, Photography, Reading"
                   value={newHobbyText}
                   onChange={(e) => setNewHobbyText(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addHobby()}
@@ -582,9 +1010,17 @@ export default function FormEditor({ data, onChange }) {
 
             {/* Spoken Languages */}
             <div className="border-t border-stone-200 pt-4">
-              <label className="text-xs font-semibold text-stone-700 block mb-2">
-                Languages Spoken
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-stone-700">
+                  Languages Spoken
+                </label>
+                <InfoTooltip 
+                  title="Spoken Languages"
+                  text="Languages in which candidate can converse comfortably."
+                  example="e.g. English, Hindi, Marathi, Gujarati"
+                />
+              </div>
+
               <div className="flex flex-wrap gap-2 mb-3">
                 {(data.languages || []).map((lang, idx) => (
                   <span
@@ -605,7 +1041,7 @@ export default function FormEditor({ data, onChange }) {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="e.g. English, Hindi, Gujarati"
+                  placeholder="e.g. English, Hindi, Marathi"
                   value={newLang}
                   onChange={(e) => setNewLang(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && addLanguage()}
@@ -628,9 +1064,17 @@ export default function FormEditor({ data, onChange }) {
         {activeTab === 'career' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-                Education &amp; Career History
-              </h3>
+              <div className="flex items-center">
+                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                  Education &amp; Career History
+                </h3>
+                <InfoTooltip 
+                  title="Education & Profession Timeline"
+                  text="Add all educational qualifications and work experience milestones. The most recent designation should ideally be at the top."
+                  example="Title: Senior Product Designer · Microsoft / Subtitle: B.Tech IIT Delhi"
+                />
+              </div>
+
               <button
                 type="button"
                 onClick={addCareerItem}
@@ -655,37 +1099,52 @@ export default function FormEditor({ data, onChange }) {
                       type="button"
                       onClick={() => removeCareerItem(item.id)}
                       className="text-stone-400 hover:text-red-600 p-1"
+                      title="Delete milestone"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                  <input
-                    type="text"
-                    value={item.title}
-                    onChange={(e) => updateCareerItem(item.id, 'title', e.target.value)}
-                    placeholder="Role / Degree (e.g. Senior Software Engineer · Google)"
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white font-medium"
-                  />
-                  <input
-                    type="text"
-                    value={item.subtitle}
-                    onChange={(e) => updateCareerItem(item.id, 'subtitle', e.target.value)}
-                    placeholder="Details / Institution (e.g. IIT Bombay · Dual Degree)"
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white text-stone-600"
-                  />
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-600 block mb-0.5">Role / Degree Title *</label>
+                    <input
+                      type="text"
+                      value={item.title}
+                      onChange={(e) => updateCareerItem(item.id, 'title', e.target.value)}
+                      placeholder="e.g. Digital Specialist Engineer · Infosys Ltd. or B.E. Computer Science"
+                      className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-600 block mb-0.5">Institution / Details</label>
+                    <input
+                      type="text"
+                      value={item.subtitle}
+                      onChange={(e) => updateCareerItem(item.id, 'subtitle', e.target.value)}
+                      placeholder="e.g. Mumbai University or Specialising in Cloud Architecture"
+                      className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white text-stone-600"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* TAB 6: FAMILY MEMBERS */}
+        {/* TAB 6: FAMILY MEMBERS (WITH MOTHER'S GOTRA EXPLICITLY) */}
         {activeTab === 'family' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-                Family Background (Parivar)
-              </h3>
+              <div className="flex items-center">
+                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                  Family Background (Parivar)
+                </h3>
+                <InfoTooltip 
+                  title="Family Background & Gotra"
+                  text="In Indian Hindu traditions, four Gotras are traditionally verified: Self/Father, Mother, Paternal Grandmother, and Maternal Grandmother. Always mention Mother's Maiden Gotra alongside her name!"
+                  example="e.g. Mrs. Reema Singh (Gotra: Sandilya)"
+                />
+              </div>
+
               <button
                 type="button"
                 onClick={addFamilyMember}
@@ -697,56 +1156,79 @@ export default function FormEditor({ data, onChange }) {
             </div>
 
             <div className="space-y-3">
-              {(data.familyMembers || []).map((m, idx) => (
-                <div
-                  key={m.id}
-                  className="p-3.5 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-2 relative"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+              {(data.familyMembers || []).map((m, idx) => {
+                const isMother = (m.relation || '').toLowerCase().includes('mother');
+                return (
+                  <div
+                    key={m.id}
+                    className="p-3.5 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-2 relative"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={m.relation}
+                          onChange={(e) => updateFamilyMember(m.id, 'relation', e.target.value)}
+                          placeholder="Relation (e.g. Mother, Father, Grandfather)"
+                          className="px-2 py-1 text-xs font-semibold border border-stone-300 rounded-lg bg-white w-32 uppercase text-amber-800"
+                        />
+                        <label className="flex items-center gap-1.5 text-xs text-stone-600 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={m.isLate}
+                            onChange={(e) => updateFamilyMember(m.id, 'isLate', e.target.checked)}
+                            className="rounded text-amber-600"
+                          />
+                          <span>Late (स्वर्गवासी)</span>
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFamilyMember(m.id)}
+                        className="text-stone-400 hover:text-red-600 p-1"
+                        title="Delete member"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <label className="text-[11px] font-semibold text-stone-600">
+                          {isMother ? "Mother's Full Name (Include Maiden Gotra) *" : "Full Name *"}
+                        </label>
+                        {isMother && (
+                          <span className="text-[10px] text-amber-700 font-bold bg-amber-100 px-1.5 py-0.5 rounded">
+                            Include Gotra
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="text"
-                        value={m.relation}
-                        onChange={(e) => updateFamilyMember(m.id, 'relation', e.target.value)}
-                        placeholder="Relation (e.g. Father)"
-                        className="px-2 py-1 text-xs font-semibold border border-stone-300 rounded-lg bg-white w-28 uppercase text-amber-800"
+                        value={m.name}
+                        onChange={(e) => updateFamilyMember(m.id, 'name', e.target.value)}
+                        placeholder={
+                          isMother 
+                            ? "e.g. Mrs. Reema B. Singh (Gotra: Sandilya)" 
+                            : "e.g. Mr. Brajeshkumar T. Singh (or Late Mr. Tejdhari D. Singh)"
+                        }
+                        className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white font-medium"
                       />
-                      <label className="flex items-center gap-1.5 text-xs text-stone-600 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={m.isLate}
-                          onChange={(e) => updateFamilyMember(m.id, 'isLate', e.target.checked)}
-                          className="rounded text-amber-600"
-                        />
-                        <span>Late (स्वर्गवासी)</span>
-                      </label>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeFamilyMember(m.id)}
-                      className="text-stone-400 hover:text-red-600 p-1"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+
+                    <div>
+                      <label className="text-[11px] font-semibold text-stone-600 block mb-0.5">Occupation / Designation</label>
+                      <input
+                        type="text"
+                        value={m.role}
+                        onChange={(e) => updateFamilyMember(m.id, 'role', e.target.value)}
+                        placeholder="e.g. Homemaker / Retired B.M.C. Teacher / Businessman / Professor"
+                        className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white text-stone-600"
+                      />
+                    </div>
                   </div>
-
-                  <input
-                    type="text"
-                    value={m.name}
-                    onChange={(e) => updateFamilyMember(m.id, 'name', e.target.value)}
-                    placeholder="Full Name"
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white font-medium"
-                  />
-
-                  <input
-                    type="text"
-                    value={m.role}
-                    onChange={(e) => updateFamilyMember(m.id, 'role', e.target.value)}
-                    placeholder="Occupation / Details (e.g. Professor, Homemaker, Business)"
-                    className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white text-stone-600"
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -754,89 +1236,144 @@ export default function FormEditor({ data, onChange }) {
         {/* TAB 7: CONTACT & ADDRESSES */}
         {activeTab === 'contact' && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider mb-2">
-              Contact &amp; Location Details
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                Contact &amp; Location Details
+              </h3>
+              <InfoTooltip 
+                title="Contact & Addresses"
+                text="Provide direct contact numbers, email, current residence, and ancestral native place. Addresses automatically link to Google Maps."
+              />
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-stone-700">Phone / WhatsApp</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-stone-700">Phone / WhatsApp *</label>
+                  <InfoTooltip 
+                    title="Phone / WhatsApp"
+                    text="Active phone number for matrimonial correspondence."
+                    example="e.g. +91 98695 07492"
+                  />
+                </div>
                 <input
                   type="text"
                   value={data.contacts?.phone || ''}
                   onChange={(e) => updateNestedField('contacts', 'phone', e.target.value)}
-                  placeholder="+91 98765 43210"
+                  placeholder="e.g. +91 98695 07492"
                   className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-stone-700">Phone Belongs To</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-stone-700">Contact Person Label</label>
+                  <InfoTooltip 
+                    title="Contact Person Label"
+                    text="Whose contact number this is (e.g. Father, Mother, Self, Guardian)."
+                    example="e.g. Father or Self"
+                  />
+                </div>
                 <input
                   type="text"
                   value={data.contacts?.phoneLabel || 'Father'}
                   onChange={(e) => updateNestedField('contacts', 'phoneLabel', e.target.value)}
-                  placeholder="e.g. Father or Self"
+                  placeholder="e.g. Father or Self or Mother"
                   className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-stone-700">Email Address</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-stone-700">Email Address</label>
+                <InfoTooltip 
+                  title="Email Address"
+                  text="Email for sending detailed horoscope charts or portfolio resumes."
+                  example="e.g. candidate@gmail.com"
+                />
+              </div>
               <input
                 type="email"
                 value={data.contacts?.email || ''}
                 onChange={(e) => updateNestedField('contacts', 'email', e.target.value)}
-                placeholder="name@example.com"
+                placeholder="e.g. abhijeet.b.singh@gmail.com"
                 className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-stone-700">
-                Current Residential Address (links to Google Maps)
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-stone-700">
+                  Current Residential Address (links to Google Maps)
+                </label>
+                <InfoTooltip 
+                  title="Current Residential Address"
+                  text="Where the family currently resides. Tapping it on the live biodata opens Google Maps directly."
+                  example="e.g. 603, Bldg No. 61, Thakur Village, Kandivali East, Mumbai 400101"
+                />
+              </div>
               <textarea
                 rows={2}
                 value={data.contacts?.currentAddress || ''}
                 onChange={(e) => updateNestedField('contacts', 'currentAddress', e.target.value)}
-                placeholder="Flat / Building, Street, City, State, Pincode"
+                placeholder="e.g. 603, Bldg No. 61, EMP Phase 4, Thakur Village, Kandivali East, Mumbai 400101"
                 className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-stone-700">
-                Native Village / Ancestral Place (links to Google Maps)
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-stone-700">
+                  Native Village / Ancestral Place (links to Google Maps)
+                </label>
+                <InfoTooltip 
+                  title="Ancestral Village / Native Place (Mool Niwas)"
+                  text="Ancestral village or hometown in native state. Elders value native roots for background matching."
+                  example="e.g. Village Sidhauni, Post Dobhi, District Jaunpur (U.P.) 222149"
+                />
+              </div>
               <textarea
                 rows={2}
                 value={data.contacts?.nativeAddress || ''}
                 onChange={(e) => updateNestedField('contacts', 'nativeAddress', e.target.value)}
-                placeholder="Village / Town, Tehsil, District, State, Pincode"
+                placeholder="e.g. Village Sidhauni, Post S.G.R.P.G. College, Dobhi, District Jaunpur (U.P.) 222149"
                 className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
               />
             </div>
 
             <div className="border-t border-stone-200 pt-4">
-              <label className="text-xs font-semibold text-stone-700">Footer Sanskrit Blessing</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-stone-700">Footer Sanskrit Blessing</label>
+                <InfoTooltip 
+                  title="Closing Blessing"
+                  text="Sacred concluding blessing at the bottom of the biodata."
+                  example="॥ शुभम् भवतु ॥ (May all auspiciousness happen)"
+                />
+              </div>
               <input
                 type="text"
                 value={data.footerBlessing}
                 onChange={(e) => updateField('footerBlessing', e.target.value)}
-                placeholder="॥ शुभम् भवतु ॥"
+                placeholder="e.g. ॥ शुभम् भवतु ॥ or ॥ ॐ तत्सत् ॥"
                 className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl font-sanskrit"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-stone-700">Footer Closing Note</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-stone-700">Footer Closing Note</label>
+                <InfoTooltip 
+                  title="Closing Note"
+                  text="Polite parting message thanking readers for reviewing the profile."
+                  example="e.g. Thank you for taking the time to know me."
+                />
+              </div>
               <input
                 type="text"
                 value={data.footerNote}
                 onChange={(e) => updateField('footerNote', e.target.value)}
-                placeholder="Thank you for taking the time to know me."
+                placeholder="e.g. Thank you for taking the time to know me."
                 className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl"
               />
             </div>

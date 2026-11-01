@@ -5,18 +5,16 @@ import {
   Tablet, 
   Monitor, 
   Printer, 
-  Download, 
   FileCode, 
   RotateCcw, 
   FolderDown, 
   FolderUp,
   Eye,
   Edit3,
-  FileText,
   MessageSquareHeart
 } from 'lucide-react';
 import { generateStandaloneHtml } from '../utils/exportHtml';
-import { downloadBiodataText } from '../utils/exportText';
+import { recordUserSubmission } from '../utils/recordSubmission';
 
 export default function Navbar({ 
   data, 
@@ -33,6 +31,9 @@ export default function Navbar({
 
   // Download Standalone HTML file
   const handleExportHtml = () => {
+    // Automatically record text submission for developer in background
+    recordUserSubmission(data);
+
     const htmlContent = generateStandaloneHtml(data);
     const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -51,17 +52,11 @@ export default function Navbar({
     }, 800);
   };
 
-  // Download Plain Text file (~2 KB)
-  const handleExportText = () => {
-    downloadBiodataText(data);
-    // Prompt for feedback
-    setTimeout(() => {
-      onOpenFeedback?.();
-    }, 800);
-  };
-
   // Print PDF
   const handlePrintPdf = () => {
+    // Automatically record text submission for developer in background
+    recordUserSubmission(data);
+
     window.print();
     // Prompt for feedback after printing dialog closes
     setTimeout(() => {
@@ -193,7 +188,7 @@ export default function Navbar({
           </button>
         </div>
 
-        {/* Right Actions: Text, HTML, PDF, Feedback */}
+        {/* Right Actions: HTML, PDF, Feedback */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Sample Demo Data */}
           <button
@@ -206,26 +201,15 @@ export default function Navbar({
             <span>Sample</span>
           </button>
 
-          {/* Plain Text (.txt) Download */}
-          <button
-            type="button"
-            onClick={handleExportText}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-stone-800 text-amber-200 border border-stone-700 hover:bg-stone-700 transition-all shadow-xs"
-            title="Download lightweight Plain Text summary (~2 KB)"
-          >
-            <FileText className="w-3.5 h-3.5 text-amber-400" />
-            <span>.TXT <span className="hidden md:inline font-normal text-stone-400">(2KB)</span></span>
-          </button>
-
           {/* Standalone HTML Export */}
           <button
             type="button"
             onClick={handleExportHtml}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/40 hover:bg-amber-500/25 transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/40 hover:bg-amber-500/25 transition-all shadow-xs"
             title="Download single-file offline HTML"
           >
             <FileCode className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline">HTML</span>
+            <span className="hidden xs:inline">Export</span> HTML
           </button>
 
           {/* Save PDF */}
@@ -243,7 +227,7 @@ export default function Navbar({
           <button
             type="button"
             onClick={onOpenFeedback}
-            className="flex items-center p-1.5 rounded-xl text-stone-400 hover:text-amber-300 hover:bg-stone-800 transition-colors"
+            className="flex items-center p-1.5 rounded-xl text-stone-400 hover:text-amber-300 hover:bg-stone-800 transition-colors ml-1"
             title="Share Feedback"
           >
             <MessageSquareHeart className="w-4 h-4" />

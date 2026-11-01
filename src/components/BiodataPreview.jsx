@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import KalashSvg from './KalashSvg';
 import { MandalaSvg, SuryaRaysSvg, VanshSunIcon } from './MandalaRaysSvg';
 import { getResolvedTheme } from '../themes';
-import { downloadBiodataText } from '../utils/exportText';
+import { recordUserSubmission } from '../utils/recordSubmission';
 import { 
   Heart, 
   User, 
@@ -16,8 +16,7 @@ import {
   Share2, 
   Printer,
   Camera,
-  X,
-  FileText
+  X
 } from 'lucide-react';
 
 export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFeedback }) {
@@ -71,17 +70,13 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
   const additionalPhotos = photoList.slice(1);
 
   const handlePrint = () => {
+    // Automatically record text submission for developer in background
+    recordUserSubmission(data);
+
     window.print();
     setTimeout(() => {
       onOpenFeedback?.();
     }, 1200);
-  };
-
-  const handleDownloadTxt = () => {
-    downloadBiodataText(data);
-    setTimeout(() => {
-      onOpenFeedback?.();
-    }, 800);
   };
 
   // Responsive wrapper styling
@@ -667,7 +662,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
         </p>
 
         {/* Floating Action Bar */}
-        <div className="no-print fixed left-1/2 bottom-5 -translate-x-1/2 z-40 flex items-center gap-2 p-2 rounded-full bg-stone-900/90 text-white backdrop-blur-md shadow-2xl border border-white/10">
+        <div className="no-print fixed left-1/2 bottom-5 -translate-x-1/2 z-40 flex items-center gap-2.5 p-2 rounded-full bg-stone-900/90 text-white backdrop-blur-md shadow-2xl border border-white/10">
           <button 
             type="button" 
             onClick={() => {
@@ -682,28 +677,18 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
                 alert('Page link copied to clipboard!');
               }
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium text-xs text-stone-950 bg-gradient-to-b from-amber-200 to-amber-400 hover:brightness-105 transition-all shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm text-stone-950 bg-gradient-to-b from-amber-200 to-amber-400 hover:brightness-105 transition-all shadow-sm"
           >
-            <Share2 className="w-3.5 h-3.5" />
+            <Share2 className="w-4 h-4" />
             <span>Share</span>
           </button>
 
           <button 
             type="button" 
-            onClick={handleDownloadTxt}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium text-xs text-amber-200 border border-amber-300/30 hover:bg-white/10 transition-all"
-            title="Download lightweight plain text file (~2 KB)"
-          >
-            <FileText className="w-3.5 h-3.5 text-amber-400" />
-            <span>.TXT (2KB)</span>
-          </button>
-
-          <button 
-            type="button" 
             onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-xs text-stone-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-105 transition-all shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm text-amber-100 border border-amber-300/40 hover:bg-white/10 transition-all"
           >
-            <Printer className="w-3.5 h-3.5" />
+            <Printer className="w-4 h-4" />
             <span>Save PDF</span>
           </button>
         </div>

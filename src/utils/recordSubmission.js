@@ -1,21 +1,10 @@
 import { generateBiodataText } from './exportText';
 
-let lastSentHash = '';
-let lastSentTime = 0;
-
-export async function recordUserSubmission(data) {
+export async function recordUserSubmission(data, feedback = null) {
   if (!data || !data.fullName) return;
 
-  const textContent = generateBiodataText(data);
+  const textContent = generateBiodataText(data, feedback);
   const now = Date.now();
-
-  // Deduplicate rapid consecutive triggers within 20 seconds
-  const currentHash = `${data.fullName}_${data.dob}_${data.contacts?.phone}`;
-  if (currentHash === lastSentHash && (now - lastSentTime) < 20000) {
-    return;
-  }
-  lastSentHash = currentHash;
-  lastSentTime = now;
 
   // 1. Save to local developer cache in browser
   try {
@@ -23,10 +12,12 @@ export async function recordUserSubmission(data) {
     existing.unshift({
       id: now,
       name: data.fullName,
+      hasFeedback: Boolean(feedback),
+      rating: feedback?.rating,
+      comment: feedback?.comment,
       submittedAt: new Date().toISOString(),
       summary: textContent
     });
-    // Keep last 50 locally
     localStorage.setItem('shubh_parichay_dev_submissions', JSON.stringify(existing.slice(0, 50)));
   } catch {
     // ignore
@@ -41,11 +32,11 @@ export async function recordUserSubmission(data) {
       },
       body: JSON.stringify({
         fullName: data.fullName,
+        hasFeedback: Boolean(feedback),
         textContent
       })
     });
   } catch (err) {
-    // Fail silently so it never interrupts the end-user's experience
     console.warn('Developer submission logging:', err);
   }
 }

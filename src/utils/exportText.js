@@ -1,4 +1,4 @@
-export function generateBiodataText(data) {
+export function generateBiodataText(data, feedback = null) {
   // Calculate age
   let age = '28';
   if (data.dob) {
@@ -148,6 +148,20 @@ export function generateBiodataText(data) {
     text += `\n`;
   }
 
+  // 7. User Feedback & Rating (if provided)
+  if (feedback && (feedback.rating || feedback.comment)) {
+    const starStr = '★'.repeat(feedback.rating || 5) + '☆'.repeat(5 - (feedback.rating || 5));
+    text += `${divider}\n`;
+    text += `USER FEEDBACK & EXPERIENCE RATING\n`;
+    text += `${divider}\n`;
+    text += `Star Rating         : ${starStr} (${feedback.rating || 5}/5 Stars)\n`;
+    if (feedback.comment) {
+      text += `User Feedback/Notes : ${feedback.comment}\n`;
+    }
+    text += `Submitted Timestamp : ${feedback.submittedAt || new Date().toISOString()}\n`;
+    text += `\n`;
+  }
+
   text += `${divider}\n`;
   text += `${data.footerBlessing || '॥ शुभम् भवतु ॥'}\n`;
   if (data.footerNote) {
@@ -159,8 +173,8 @@ export function generateBiodataText(data) {
   return text;
 }
 
-export function downloadBiodataText(data) {
-  const content = generateBiodataText(data);
+export function downloadBiodataText(data, feedback = null) {
+  const content = generateBiodataText(data, feedback);
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

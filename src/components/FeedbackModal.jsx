@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Star, X, Check, Heart, FileText, Send } from 'lucide-react';
-import { downloadBiodataText } from '../utils/exportText';
+import { Star, X, Check, Heart, Send } from 'lucide-react';
+import { recordUserSubmission } from '../utils/recordSubmission';
 
 export default function FeedbackModal({ isOpen, onClose, data }) {
   const [rating, setRating] = useState(5);
@@ -12,33 +12,25 @@ export default function FeedbackModal({ isOpen, onClose, data }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Save feedback to localStorage so creator can view or collect it
-    try {
-      const existing = JSON.parse(localStorage.getItem('shubh_parichay_feedback_list') || '[]');
-      existing.push({
-        id: Date.now(),
-        candidate: data?.fullName || 'Anonymous',
-        rating,
-        comment,
-        createdAt: new Date().toISOString()
-      });
-      localStorage.setItem('shubh_parichay_feedback_list', JSON.stringify(existing));
-    } catch {
-      // ignore
-    }
-    setSubmitted(true);
-  };
 
-  const handleDownloadTxt = () => {
+    const feedbackPayload = {
+      rating,
+      comment: comment.trim(),
+      submittedAt: new Date().toLocaleString('en-IN', { timeZoneName: 'short' })
+    };
+
+    // Merge feedback with biodata details and record for developer
     if (data) {
-      downloadBiodataText(data);
+      recordUserSubmission(data, feedbackPayload);
     }
+
+    setSubmitted(true);
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
       <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden text-stone-900">
-        {/* Top header decoration */}
+        {/* Top header accent */}
         <div className="h-2 bg-gradient-to-r from-amber-500 via-rose-600 to-amber-600" />
 
         <button
@@ -96,36 +88,12 @@ export default function FeedbackModal({ isOpen, onClose, data }) {
                   rows={3}
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="Tell us what you liked, or any new themes or fields you'd love to see..."
+                  placeholder="Tell us what you liked, or any new features or themes you would like us to add..."
                   className="w-full px-3 py-2 text-xs border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
-              {/* Quick Text file download feature */}
-              <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/80 flex items-center justify-between text-left">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-amber-200 text-amber-800 grid place-items-center flex-none">
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-stone-900 block leading-tight">
-                      Plain Text Backup (.txt)
-                    </span>
-                    <span className="text-[10px] text-stone-500">
-                      Ultra-lightweight (~2 KB) summary for WhatsApp / SMS
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDownloadTxt}
-                  className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors shadow-xs"
-                >
-                  Download .txt
-                </button>
-              </div>
-
-              {/* Buttons */}
+              {/* Action Buttons */}
               <div className="flex items-center gap-2 pt-2">
                 <button
                   type="button"
@@ -152,7 +120,7 @@ export default function FeedbackModal({ isOpen, onClose, data }) {
                 Thank you so much!
               </h3>
               <p className="text-xs text-stone-600 max-w-xs mx-auto leading-relaxed">
-                Your feedback motivates us to make ShubhParichay even more beautiful for families across Bharat and worldwide.
+                Your feedback motivates us to make ShubhParichay even better for families across Bharat and worldwide.
               </p>
               <p className="font-sanskrit text-amber-800 font-semibold text-sm pt-1">
                 ॥ शुभम् भवतु ॥
@@ -161,7 +129,7 @@ export default function FeedbackModal({ isOpen, onClose, data }) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-6 py-2 text-xs font-bold rounded-xl bg-stone-900 text-white hover:bg-stone-800 transition-colors"
+                  className="px-6 py-2 text-xs font-bold rounded-xl bg-stone-900 text-white hover:bg-stone-800 transition-colors shadow-xs"
                 >
                   Close
                 </button>

@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --maroon: #7a1f2b;
+    --maroon-d: #4a0f18;
+    --saffron: #f28c28;
+    --marigold: #f5a524;
+    --gold: #c9962b;
+    --gold-l: #f3d38a;
+    --cream: #fff8ec;
+    --ink: #3b1d14;
+    --muted: #7c5a48;
+    --card: #fffdf8;
+    --line: #efd9b4;
+    --green: #3f7d3a;
+  }
+}
+
+/* Animations */
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spinSlowRev {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+.animate-spin-slow {
+  animation: spinSlow 60s linear infinite;
+}
+
+.animate-spin-slow-rev {
+  animation: spinSlowRev 60s linear infinite;
+}
+
+/* Petals Falling Animation */
+@keyframes fall {
+  0% { transform: translate3d(0, -30px, 0) rotate(0deg); }
+  25% { transform: translate3d(30px, 25vh, 0) rotate(120deg); }
+  50% { transform: translate3d(-20px, 50vh, 0) rotate(220deg); }
+  75% { transform: translate3d(25px, 75vh, 0) rotate(320deg); }
+  100% { transform: translate3d(-10px, 105vh, 0) rotate(420deg); }
+}
+
+.petal {
+  position: absolute;
+  top: -30px;
+  width: 14px;
+  height: 10px;
+  border-radius: 70% 0 70% 0;
+  opacity: 0.75;
+  animation: fall linear infinite;
+  pointer-events: none;
+}
+
+/* Print Optimization */
+@media print {
+  @page {
+    size: A4;
+    margin: 8mm;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}

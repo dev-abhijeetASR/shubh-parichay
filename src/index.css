@@ -58,23 +58,66 @@
   pointer-events: none;
 }
 
+/* Prevent horizontal overflow and misalignment on mobile */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  position: relative;
+}
+
 /* Print Optimization */
 @media print {
   @page {
-    size: A4;
+    size: A4 portrait;
     margin: 8mm;
   }
-  body {
+
+  html, body {
     background: #ffffff !important;
     color: #000000 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
-  .no-print {
+
+  #root, .min-h-screen, div {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Force main preview to ALWAYS be visible during print, even if mobile view was on editor */
+  main {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    float: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide navigation, editor aside, petals, tooltips, modals and print-hidden elements */
+  aside,
+  header,
+  nav,
+  .no-print,
+  .petal,
+  button {
     display: none !important;
+    visibility: hidden !important;
   }
+
   .print-break-inside-avoid {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;

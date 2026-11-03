@@ -80,9 +80,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-100 text-stone-900">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-stone-100 text-stone-900">
       {/* Top Navigation */}
-      <div className="no-print">
+      <div className="no-print w-full max-w-full">
         <Navbar
           data={biodata}
           onResetData={handleResetData}
@@ -97,7 +97,7 @@ export default function App() {
       </div>
 
       {/* Main Studio Body: 2-Panel Split on Desktop, Tabbed on Mobile */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden w-full max-w-full">
         {/* Left Side: Form Editor */}
         <aside 
           className={`w-full lg:w-[460px] xl:w-[500px] flex-none h-[calc(100vh-53px)] overflow-hidden no-print ${
@@ -109,12 +109,12 @@ export default function App() {
 
         {/* Right Side: Live Interactive Preview */}
         <main 
-          className={`flex-1 h-[calc(100vh-53px)] overflow-y-auto relative scroll-smooth ${
+          className={`flex-1 h-[calc(100vh-53px)] overflow-y-auto relative scroll-smooth print:block print:h-auto print:overflow-visible print:w-full print:p-0 ${
             mobileActiveView === 'editor' ? 'hidden lg:block' : 'block'
           }`}
         >
           {biodata.enablePetals && <FallingPetals count={24} />}
-          <div className="py-2 px-1 md:px-4">
+          <div className="py-2 px-1 md:px-4 print:p-0 print:m-0">
             <BiodataPreview 
               data={biodata} 
               previewMode={previewMode} 

@@ -52,16 +52,25 @@ export default function Navbar({
     }, 800);
   };
 
-  // Print PDF
+  // Print PDF with automatic mobile preview mount
   const handlePrintPdf = () => {
     // Automatically record text submission for developer in background
     recordUserSubmission(data);
 
-    window.print();
-    // Prompt for feedback after printing dialog closes
+    // CRITICAL FOR MOBILE: If currently in 'editor' view on mobile, switch to 'preview'
+    // so the preview DOM is mounted and rendered before opening print dialog
+    if (setMobileActiveView) {
+      setMobileActiveView('preview');
+    }
+
+    // Give browser a short tick to render the preview DOM before triggering print
     setTimeout(() => {
-      onOpenFeedback?.();
-    }, 1200);
+      window.print();
+      // Prompt for feedback after printing dialog closes
+      setTimeout(() => {
+        onOpenFeedback?.();
+      }, 1200);
+    }, 250);
   };
 
   // Download JSON backup
@@ -98,23 +107,23 @@ export default function Navbar({
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-stone-900 text-stone-100 border-b border-stone-800 shadow-md">
-      <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-50 w-full max-w-full overflow-hidden bg-stone-900 text-stone-100 border-b border-stone-800 shadow-md">
+      <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-3">
         {/* Brand Logo & Name */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 flex items-center justify-center text-stone-950 font-bold shadow-md shadow-amber-900/40">
-            <span className="font-sanskrit text-lg">शुभ</span>
+        <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 flex items-center justify-center text-stone-950 font-bold shadow-md shadow-amber-900/40">
+            <span className="font-sanskrit text-base sm:text-lg">शुभ</span>
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-serif font-bold text-base md:text-lg tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-300 to-amber-400">
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <span className="font-serif font-bold text-sm sm:text-base md:text-lg tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-300 to-amber-400">
                 ShubhParichay
               </span>
-              <span className="hidden sm:inline-block font-sanskrit text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              <span className="hidden md:inline-block font-sanskrit text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
                 शुभ परिचय
               </span>
             </div>
-            <p className="text-[10px] text-stone-400 -mt-0.5 hidden sm:block">
+            <p className="text-[10px] text-stone-400 -mt-0.5 hidden md:block">
               Royal Indian Marriage Biodata Studio
             </p>
           </div>
@@ -161,35 +170,35 @@ export default function Navbar({
         </div>
 
         {/* Mobile View Switcher */}
-        <div className="flex lg:hidden items-center bg-stone-800 p-0.5 rounded-xl border border-stone-700">
+        <div className="flex lg:hidden items-center bg-stone-800 p-0.5 rounded-xl border border-stone-700 flex-shrink-0">
           <button
             type="button"
             onClick={() => setMobileActiveView('editor')}
-            className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg font-medium transition-all ${
+            className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs rounded-lg font-medium transition-all ${
               mobileActiveView === 'editor' 
-                ? 'bg-amber-500 text-stone-950 font-semibold' 
-                : 'text-stone-300'
+                ? 'bg-amber-500 text-stone-950 font-semibold shadow-xs' 
+                : 'text-stone-300 hover:text-white'
             }`}
           >
-            <Edit3 className="w-3.5 h-3.5" />
+            <Edit3 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             <span>Edit</span>
           </button>
           <button
             type="button"
             onClick={() => setMobileActiveView('preview')}
-            className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg font-medium transition-all ${
+            className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs rounded-lg font-medium transition-all ${
               mobileActiveView === 'preview' 
-                ? 'bg-amber-500 text-stone-950 font-semibold' 
-                : 'text-stone-300'
+                ? 'bg-amber-500 text-stone-950 font-semibold shadow-xs' 
+                : 'text-stone-300 hover:text-white'
             }`}
           >
-            <Eye className="w-3.5 h-3.5" />
+            <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             <span>Preview</span>
           </button>
         </div>
 
         {/* Right Actions: HTML, PDF, Feedback */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {/* Sample Demo Data */}
           <button
             type="button"
@@ -205,29 +214,30 @@ export default function Navbar({
           <button
             type="button"
             onClick={handleExportHtml}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/40 hover:bg-amber-500/25 transition-all shadow-xs"
+            className="flex items-center gap-1 p-1.5 sm:px-3 sm:py-1.5 text-xs font-semibold rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/40 hover:bg-amber-500/25 transition-all shadow-xs"
             title="Download single-file offline HTML"
           >
             <FileCode className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline">Export</span> HTML
+            <span className="hidden sm:inline">HTML</span>
           </button>
 
           {/* Save PDF */}
           <button
             type="button"
             onClick={handlePrintPdf}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl text-stone-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-105 transition-all shadow-sm shadow-amber-900/30"
+            className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-xl text-stone-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:brightness-105 transition-all shadow-sm shadow-amber-900/30 whitespace-nowrap cursor-pointer"
             title="Print or Save as A4 PDF"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Save PDF</span>
+            <span className="hidden sm:inline">Save</span>
+            <span>PDF</span>
           </button>
 
           {/* Feedback Icon Button */}
           <button
             type="button"
             onClick={onOpenFeedback}
-            className="flex items-center p-1.5 rounded-xl text-stone-400 hover:text-amber-300 hover:bg-stone-800 transition-colors ml-1"
+            className="p-1.5 rounded-xl text-stone-400 hover:text-amber-300 hover:bg-stone-800 transition-colors"
             title="Share Feedback"
           >
             <MessageSquareHeart className="w-4 h-4" />

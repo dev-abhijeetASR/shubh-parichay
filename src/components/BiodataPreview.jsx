@@ -84,7 +84,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
 
   return (
     <div 
-      className="w-full min-h-full py-8 px-3 transition-colors duration-300"
+      className="w-full min-h-full py-8 px-3 transition-colors duration-300 print:p-0 print:m-0 print:bg-white print:min-h-0"
       style={{
         background: `
           radial-gradient(1200px 600px at 50% -10%, #ffe4b0 0%, transparent 60%),
@@ -95,7 +95,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
         color: theme.ink
       }}
     >
-      <div className={`mx-auto ${wrapperWidth} transition-all duration-300`}>
+      <div className={`mx-auto ${wrapperWidth} transition-all duration-300 print:max-w-none print:w-full print:m-0 print:p-0`}>
         {/* Sacred Kalash */}
         <KalashSvg className="w-24 md:w-28 h-auto mx-auto drop-shadow-lg" />
 

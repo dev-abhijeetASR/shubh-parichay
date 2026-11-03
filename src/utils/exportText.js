@@ -1,23 +1,8 @@
+import { calculateAge } from './vedicAstrology';
+
 export function generateBiodataText(data, feedback = null) {
-  // Calculate age
-  let age = '28';
-  if (data.dob) {
-    try {
-      const parts = data.dob.split('-');
-      if (parts.length === 3) {
-        const birthDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        const today = new Date();
-        let calculatedAge = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-          calculatedAge--;
-        }
-        if (!isNaN(calculatedAge)) age = String(calculatedAge);
-      }
-    } catch {
-      // fallback
-    }
-  }
+  // Calculate live age from DOB
+  const age = calculateAge(data.dob) || '28';
 
   // Height formatting
   let heightStr = data.height || '';

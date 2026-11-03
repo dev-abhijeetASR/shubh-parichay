@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import KalashSvg from './KalashSvg';
 import { MandalaSvg, SuryaRaysSvg, VanshSunIcon } from './MandalaRaysSvg';
 import { getResolvedTheme } from '../themes';
 import { recordUserSubmission } from '../utils/recordSubmission';
+import { calculateAge } from '../utils/vedicAstrology';
 import { 
   Heart, 
   User, 
@@ -14,9 +15,11 @@ import {
   MapPin, 
   Home, 
   Share2, 
-  Printer,
-  Camera,
-  X
+  Printer, 
+  Camera, 
+  X, 
+  ChevronLeft, 
+  ChevronRight 
 } from 'lucide-react';
 
 export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFeedback }) {
@@ -25,26 +28,11 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
   }, [data.themeId, data.themeOverrides, data.customTheme]);
 
   const [activeModalImage, setActiveModalImage] = useState(null);
+  const [currentPhotoIdx, setCurrentPhotoIdx] = useState(0);
 
   // Calculate live age from DOB
   const calculatedAge = useMemo(() => {
-    if (!data.dob) return '28';
-    try {
-      const parts = data.dob.split('-');
-      if (parts.length === 3) {
-        const birthDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        const today = new Date();
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-          age--;
-        }
-        return isNaN(age) ? '28' : String(age);
-      }
-    } catch {
-      // fallback
-    }
-    return '28';
+    return calculateAge(data.dob) || '28';
   }, [data.dob]);
 
   // Height formatting (ft/in + cm)
@@ -66,7 +54,15 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
     return ["https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fit=crop&w=600&h=750&q=80"];
   }, [data.photoUrls, data.photoUrl]);
 
+  // Ensure currentPhotoIdx stays within bounds
+  useEffect(() => {
+    if (currentPhotoIdx >= photoList.length) {
+      setCurrentPhotoIdx(Math.max(0, photoList.length - 1));
+    }
+  }, [photoList.length, currentPhotoIdx]);
+
   const primaryPhoto = photoList[0];
+  const activePhoto = photoList[currentPhotoIdx] || primaryPhoto;
   const additionalPhotos = photoList.slice(1);
 
   const handlePrint = () => {
@@ -131,17 +127,38 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
             </>
           )}
 
-          {/* Arched Portrait with Surya Rays */}
+          {/* Arched Portrait with Surya Rays & Navigation Arrows */}
           <div className="relative mx-auto w-40 md:w-48 aspect-[4/5] flex items-center justify-center">
             {data.enableSuryaRays && (
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] md:w-[340px] h-[280px] md:h-[340px] pointer-events-none">
                 <SuryaRaysSvg className="w-full h-full" />
               </div>
             )}
+
+            {/* Left Carousel Arrow: Faded and disabled when on first photo */}
+            {photoList.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (currentPhotoIdx > 0) setCurrentPhotoIdx((i) => i - 1);
+                }}
+                disabled={currentPhotoIdx === 0}
+                className={`no-print absolute -left-5 md:-left-6 top-1/2 -translate-y-1/2 z-30 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center shadow-lg transition-all ${
+                  currentPhotoIdx === 0
+                    ? 'opacity-25 cursor-not-allowed bg-stone-900/60 text-stone-400 pointer-events-none border border-white/10'
+                    : 'opacity-90 hover:opacity-100 hover:scale-110 active:scale-95 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-bold cursor-pointer ring-2 ring-amber-200 shadow-amber-950/40'
+                }`}
+                aria-label="Previous photo"
+                title={currentPhotoIdx === 0 ? "First photo" : "Previous photo"}
+              >
+                <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            )}
             
             {/* The Arch Frame */}
             <div 
-              onClick={() => setActiveModalImage(primaryPhoto)}
+              onClick={() => setActiveModalImage(activePhoto)}
               className="relative w-full h-full overflow-hidden border-4 shadow-2xl z-10 cursor-pointer group"
               style={{
                 borderRadius: '50% 50% 18px 18px / 40% 40% 18px 18px',
@@ -151,11 +168,39 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
               title="Click to view full photo"
             >
               <img 
-                src={primaryPhoto} 
-                alt={data.fullName}
+                src={activePhoto} 
+                alt={`${data.fullName} - Photo ${currentPhotoIdx + 1}`}
                 className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
               />
+
+              {/* Counter Pill in Arch */}
+              {photoList.length > 1 && (
+                <div className="no-print absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-950/75 text-amber-200 border border-amber-400/40 backdrop-blur-xs flex items-center gap-1 shadow-sm">
+                  <span>Photo {currentPhotoIdx + 1} of {photoList.length}</span>
+                </div>
+              )}
             </div>
+
+            {/* Right Carousel Arrow: Faded and disabled when on last photo */}
+            {photoList.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (currentPhotoIdx < photoList.length - 1) setCurrentPhotoIdx((i) => i + 1);
+                }}
+                disabled={currentPhotoIdx === photoList.length - 1}
+                className={`no-print absolute -right-5 md:-right-6 top-1/2 -translate-y-1/2 z-30 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center shadow-lg transition-all ${
+                  currentPhotoIdx === photoList.length - 1
+                    ? 'opacity-25 cursor-not-allowed bg-stone-900/60 text-stone-400 pointer-events-none border border-white/10'
+                    : 'opacity-90 hover:opacity-100 hover:scale-110 active:scale-95 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-bold cursor-pointer ring-2 ring-amber-200 shadow-amber-950/40'
+                }`}
+                aria-label="Next photo"
+                title={currentPhotoIdx === photoList.length - 1 ? "Last photo" : "Next photo"}
+              >
+                <ChevronRight className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            )}
           </div>
 
           <p className="font-script text-3xl md:text-4xl mt-4 leading-none" style={{ color: theme.goldLight }}>
@@ -240,22 +285,29 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
               {photoList.map((imgUrl, idx) => (
                 <div 
                   key={idx}
-                  onClick={() => setActiveModalImage(imgUrl)}
+                  onClick={() => {
+                    setCurrentPhotoIdx(idx);
+                    setActiveModalImage(imgUrl);
+                  }}
                   className="group relative aspect-[4/5] rounded-xl overflow-hidden border-2 cursor-pointer shadow-sm hover:shadow-lg transition-all"
-                  style={{ borderColor: idx === 0 ? theme.accentGold : theme.borderColor }}
+                  style={{ borderColor: idx === currentPhotoIdx ? theme.accentGold : theme.borderColor }}
                 >
                   <img 
                     src={imgUrl} 
                     alt={`Candidate photo ${idx + 1}`}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  {idx === 0 && (
-                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500 text-stone-950 shadow-sm">
-                      Portrait Arch
+                  {idx === currentPhotoIdx ? (
+                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-stone-950 shadow-sm">
+                      Active In Arch
                     </span>
-                  )}
+                  ) : idx === 0 ? (
+                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-900/80 text-amber-300 shadow-sm">
+                      Portrait
+                    </span>
+                  ) : null}
                   <div className="absolute inset-0 bg-stone-950/20 opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center text-white text-xs font-medium">
-                    <span>View Photo</span>
+                    <span>View &amp; Select</span>
                   </div>
                 </div>
               ))}
@@ -694,25 +746,86 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
         </div>
       </div>
 
-      {/* Image Modal Lightbox */}
+      {/* Image Modal Lightbox with Carousel Controls */}
       {activeModalImage && (
         <div 
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 no-print"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 no-print"
           onClick={() => setActiveModalImage(null)}
         >
-          <div className="relative max-w-2xl max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl border-2 border-amber-400">
+          <div 
+            className="relative max-w-2xl max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl border-2 border-amber-400 bg-stone-950 flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
             <button
               type="button"
               onClick={() => setActiveModalImage(null)}
-              className="absolute top-3 right-3 p-2 rounded-full bg-black/60 text-white hover:bg-black transition-colors"
+              className="absolute top-3 right-3 z-30 p-2 rounded-full bg-black/60 text-white hover:bg-black transition-colors"
+              aria-label="Close image preview"
             >
               <X className="w-5 h-5" />
             </button>
+
+            {/* Lightbox Previous Arrow */}
+            {photoList.length > 1 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentPhotoIdx > 0) {
+                    const prev = currentPhotoIdx - 1;
+                    setCurrentPhotoIdx(prev);
+                    setActiveModalImage(photoList[prev]);
+                  }
+                }}
+                disabled={currentPhotoIdx === 0}
+                className={`absolute left-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all ${
+                  currentPhotoIdx === 0
+                    ? 'opacity-25 cursor-not-allowed bg-stone-900/60 text-stone-400 pointer-events-none'
+                    : 'opacity-90 hover:opacity-100 bg-amber-500 text-stone-950 font-bold hover:scale-110 active:scale-95'
+                }`}
+                aria-label="Previous photo"
+                title={currentPhotoIdx === 0 ? "First photo" : "Previous photo"}
+              >
+                <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
+              </button>
+            )}
+
             <img 
               src={activeModalImage} 
               alt="Enlarged view" 
               className="w-full h-auto max-h-[85vh] object-contain bg-stone-950" 
             />
+
+            {/* Lightbox Next Arrow */}
+            {photoList.length > 1 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentPhotoIdx < photoList.length - 1) {
+                    const next = currentPhotoIdx + 1;
+                    setCurrentPhotoIdx(next);
+                    setActiveModalImage(photoList[next]);
+                  }
+                }}
+                disabled={currentPhotoIdx === photoList.length - 1}
+                className={`absolute right-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all ${
+                  currentPhotoIdx === photoList.length - 1
+                    ? 'opacity-25 cursor-not-allowed bg-stone-900/60 text-stone-400 pointer-events-none'
+                    : 'opacity-90 hover:opacity-100 bg-amber-500 text-stone-950 font-bold hover:scale-110 active:scale-95'
+                }`}
+                aria-label="Next photo"
+                title={currentPhotoIdx === photoList.length - 1 ? "Last photo" : "Next photo"}
+              >
+                <ChevronRight className="w-6 h-6 stroke-[2.5]" />
+              </button>
+            )}
+
+            {/* Photo Counter Indicator in Lightbox */}
+            {photoList.length > 1 && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-semibold bg-black/75 text-amber-200 border border-amber-400/40 backdrop-blur-xs">
+                Photo {currentPhotoIdx + 1} of {photoList.length}
+              </div>
+            )}
           </div>
         </div>
       )}

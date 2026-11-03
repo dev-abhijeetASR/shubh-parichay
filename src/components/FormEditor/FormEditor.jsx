@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { THEMES, SHLOKA_PRESETS, getResolvedTheme } from '../../themes';
 import InfoTooltip from '../InfoTooltip';
+import { RASHI_LIST, calculateAge, calculateVedicRashi, normalizeRashiValue } from '../../utils/vedicAstrology';
 import { 
   Palette, 
   User, 
@@ -125,7 +126,7 @@ export default function FormEditor({ data, onChange }) {
     });
   };
 
-  // DOB handler that also formats date nicely
+  // DOB handler that formats date nicely and automatically updates Age and Vedic Rashi
   const handleDobChange = (e) => {
     const val = e.target.value;
     let formatted = '';
@@ -133,18 +134,67 @@ export default function FormEditor({ data, onChange }) {
       try {
         const parts = val.split('-');
         if (parts.length === 3) {
-          const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
           formatted = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
         }
       } catch {
         formatted = val;
       }
     }
+
+    const calculatedAge = calculateAge(val);
+
+    // Update quickHighlights age chip if present
+    const updatedHighlights = Array.isArray(data.quickHighlights)
+      ? data.quickHighlights.map(h => (h.label === 'years' || h.autoFromDob) ? { ...h, value: calculatedAge || h.value } : h)
+      : data.quickHighlights;
+
+    // Auto-calculate Vedic Rashi from birth date, time and place
+    const vedic = calculateVedicRashi(val, data.birthTime, data.birthPlace);
+
     onChange({
       ...data,
       dob: val,
-      dobFormatted: formatted
+      dobFormatted: formatted,
+      quickHighlights: updatedHighlights,
+      rashi: vedic ? vedic.rashiValue : data.rashi,
+      nakshatra: (vedic && (!data.nakshatra || data.nakshatra.includes('Charan'))) ? vedic.nakshatra : data.nakshatra
     });
+  };
+
+  // Birth Time handler that recalculates Rashi automatically
+  const handleBirthTimeChange = (e) => {
+    const timeVal = e.target.value;
+    const vedic = data.dob ? calculateVedicRashi(data.dob, timeVal, data.birthPlace) : null;
+    onChange({
+      ...data,
+      birthTime: timeVal,
+      rashi: vedic ? vedic.rashiValue : data.rashi,
+      nakshatra: (vedic && (!data.nakshatra || data.nakshatra.includes('Charan'))) ? vedic.nakshatra : data.nakshatra
+    });
+  };
+
+  // Birth Place handler that recalculates Rashi
+  const handleBirthPlaceChange = (e) => {
+    const placeVal = e.target.value;
+    const vedic = data.dob ? calculateVedicRashi(data.dob, data.birthTime, placeVal) : null;
+    onChange({
+      ...data,
+      birthPlace: placeVal,
+      rashi: vedic ? vedic.rashiValue : data.rashi
+    });
+  };
+
+  const handleRecalculateRashi = () => {
+    if (!data.dob) return;
+    const vedic = calculateVedicRashi(data.dob, data.birthTime, data.birthPlace);
+    if (vedic) {
+      onChange({
+        ...data,
+        rashi: vedic.rashiValue,
+        nakshatra: vedic.nakshatra
+      });
+    }
   };
 
   // Height conversion handlers (Feet/Inches <-> cm)
@@ -721,10 +771,17 @@ export default function FormEditor({ data, onChange }) {
               {/* DOB */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-stone-700">Date of Birth</label>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-semibold text-stone-700">Date of Birth</label>
+                    {data.dob && calculateAge(data.dob) && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold">
+                        Age: {calculateAge(data.dob)} yrs
+                      </span>
+                    )}
+                  </div>
                   <InfoTooltip 
                     title="Date of Birth"
-                    text="Used to automatically calculate the candidate's exact age in years."
+                    text="Used to auto-calculate the candidate's exact age in years and Vedic planetary horoscope (Rashi & Nakshatra)."
                     example="e.g. 1998-05-22"
                   />
                 </div>
@@ -761,14 +818,14 @@ export default function FormEditor({ data, onChange }) {
                   <label className="text-xs font-semibold text-stone-700">Birth Time</label>
                   <InfoTooltip 
                     title="Exact Birth Time"
-                    text="Essential for casting the exact Lagna Kundali and Navamsha chart."
+                    text="Essential for casting the exact Lagna Kundali, Moon sign (Rashi), and Navamsha chart."
                     example="e.g. 09:30 AM (IST)"
                   />
                 </div>
                 <input
                   type="text"
                   value={data.birthTime}
-                  onChange={(e) => updateField('birthTime', e.target.value)}
+                  onChange={handleBirthTimeChange}
                   placeholder="e.g. 09:30 AM (or 14:15 Hrs)"
                   className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
                 />
@@ -780,14 +837,14 @@ export default function FormEditor({ data, onChange }) {
                   <label className="text-xs font-semibold text-stone-700">Birth Place (City, State)</label>
                   <InfoTooltip 
                     title="Birth Place"
-                    text="City and state where candidate was born, needed for astrological coordinates."
+                    text="City and state where candidate was born, needed for astrological coordinates and Rashi."
                     example="e.g. Varanasi, Uttar Pradesh"
                   />
                 </div>
                 <input
                   type="text"
                   value={data.birthPlace}
-                  onChange={(e) => updateField('birthPlace', e.target.value)}
+                  onChange={handleBirthPlaceChange}
                   placeholder="e.g. Varanasi, Uttar Pradesh"
                   className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
                 />
@@ -890,23 +947,52 @@ export default function FormEditor({ data, onChange }) {
                 />
               </div>
 
-              {/* Rashi */}
+              {/* Rashi Dropdown with 12 Vedic Rashis */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-stone-700">Rashi (Zodiac / Moon Sign)</label>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-semibold text-stone-700">Rashi (Zodiac / Moon Sign)</label>
+                    {data.dob && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 font-semibold flex items-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                        Auto-calculated
+                      </span>
+                    )}
+                  </div>
                   <InfoTooltip 
-                    title="Janma Rashi"
-                    text="Moon sign at time of birth (e.g. Mesh, Vrishabha, Mithun, Kark, Singh, Kanya, Tula, Vrishchik, Dhanu, Makar, Kumbh, Meen)."
-                    example="e.g. Mesh (Aries)"
+                    title="Janma Rashi (12 Rashis)"
+                    text="Vedic Moon sign at time of birth. Auto-calculated based on Date, Time, and Place of birth (or select directly from the 12 Vedic Rashis)."
+                    example="e.g. Mesh (Aries) · मेष"
                   />
                 </div>
-                <input
-                  type="text"
-                  value={data.rashi}
+                <select
+                  value={normalizeRashiValue(data.rashi)}
                   onChange={(e) => updateField('rashi', e.target.value)}
-                  placeholder="e.g. Mesh (Aries) or Kanya (Virgo)"
-                  className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
-                />
+                  className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white font-medium text-stone-800 cursor-pointer"
+                >
+                  <option value="">-- Select Rashi (12 Vedic Rashis) --</option>
+                  {RASHI_LIST.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                  {/* Preserve custom entry if user had one that is not in RASHI_LIST */}
+                  {data.rashi && !RASHI_LIST.some(r => r.value === normalizeRashiValue(data.rashi)) && (
+                    <option value={data.rashi}>{data.rashi}</option>
+                  )}
+                </select>
+                {data.dob && (
+                  <div className="flex items-center justify-between mt-1 px-1 text-[11px] text-stone-500">
+                    <span>Vedic Chart (Lahiri Ayanamsha)</span>
+                    <button
+                      type="button"
+                      onClick={handleRecalculateRashi}
+                      className="text-amber-700 hover:text-amber-900 font-semibold hover:underline"
+                    >
+                      Recalculate
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Nakshatra */}

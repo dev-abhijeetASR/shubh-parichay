@@ -160,6 +160,13 @@ export function generateStandaloneHtml(data) {
     border:4px solid var(--gold-l);
     box-shadow:0 0 0 3px rgba(255,255,255,.35),0 0 0 10px rgba(243,211,138,.22),0 0 44px rgba(255,200,100,.75),0 18px 36px rgba(0,0,0,.4)}
   .arch img{width:100%;height:100%;object-fit:cover;object-position:50% 20%;display:block}
+  .photo-btn{position:absolute;top:50%;transform:translateY(-50%);z-index:25;width:34px;height:34px;border-radius:50%;border:2px solid #ffd77a;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1c1917;font-size:16px;font-weight:bold;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.45);transition:all .2s}
+  .photo-btn.prev{left:-20px}
+  .photo-btn.next{right:-20px}
+  .photo-btn:hover:not(:disabled){transform:translateY(-50%) scale(1.1);background:#fbbf24}
+  .photo-btn:disabled,.photo-btn.disabled{opacity:.25;cursor:not-allowed;pointer-events:none}
+  .photo-count{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);padding:2px 8px;border-radius:999px;font-size:10px;font-weight:600;background:rgba(0,0,0,.75);color:#ffd77a;border:1px solid rgba(255,215,122,.4);white-space:nowrap}
+  @media print{.photo-btn,.photo-count{display:none !important}}
 
   .vansh{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:4px 18px 4px 8px;border-radius:999px;
     font-family:"Tiro Devanagari Sanskrit",serif;font-size:1.15rem;line-height:1.4;color:var(--primary-d);
@@ -339,7 +346,16 @@ ${data.enablePetals ? '<div class="petals" id="petals" aria-hidden="true"></div>
         <circle r="62" fill="#ffd27a" opacity=".18"/>
         <g fill="url(#rg)" id="rays"></g>
       </svg>
-      <div class="arch"><img src="${primaryPhoto}" alt="Photo of ${escapeHtml(data.fullName)}"></div>
+      ${photoList.length > 1 ? `
+      <button type="button" class="photo-btn prev disabled" id="btnPrevPhoto" onclick="shiftPhoto(-1)" aria-label="Previous photo">&#10094;</button>
+      ` : ''}
+      <div class="arch">
+        <img id="mainArchImg" src="${primaryPhoto}" alt="Photo of ${escapeHtml(data.fullName)}">
+        ${photoList.length > 1 ? `<div class="photo-count" id="photoCountBadge">Photo 1 of ${photoList.length}</div>` : ''}
+      </div>
+      ${photoList.length > 1 ? `
+      <button type="button" class="photo-btn next" id="btnNextPhoto" onclick="shiftPhoto(1)" aria-label="Next photo">&#10095;</button>
+      ` : ''}
     </div>
     <p class="script">Biodata</p>
     <h1 class="name">${escapeHtml(data.fullName)}</h1>
@@ -500,6 +516,30 @@ ${data.enablePetals ? '<div class="petals" id="petals" aria-hidden="true"></div>
     else if(navigator.clipboard){navigator.clipboard.writeText(location.href).then(function(){flash('Link copied')});}
   };
   document.getElementById('print').onclick=function(){window.print()};
+
+  // Multiple photos carousel navigation
+  var photoGallery = ${JSON.stringify(photoList)};
+  var curPhotoIdx = 0;
+  window.shiftPhoto = function(dir) {
+    if (!photoGallery || photoGallery.length <= 1) return;
+    curPhotoIdx = Math.max(0, Math.min(photoGallery.length - 1, curPhotoIdx + dir));
+    var img = document.getElementById('mainArchImg');
+    var badge = document.getElementById('photoCountBadge');
+    var prev = document.getElementById('btnPrevPhoto');
+    var next = document.getElementById('btnNextPhoto');
+    if (img) img.src = photoGallery[curPhotoIdx];
+    if (badge) badge.textContent = 'Photo ' + (curPhotoIdx + 1) + ' of ' + photoGallery.length;
+    if (prev) {
+      prev.disabled = curPhotoIdx === 0;
+      if (curPhotoIdx === 0) prev.classList.add('disabled');
+      else prev.classList.remove('disabled');
+    }
+    if (next) {
+      next.disabled = curPhotoIdx === photoGallery.length - 1;
+      if (curPhotoIdx === photoGallery.length - 1) next.classList.add('disabled');
+      else next.classList.remove('disabled');
+    }
+  };
 </script>
 </body>
 </html>`;

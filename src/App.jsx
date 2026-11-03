@@ -100,16 +100,20 @@ export default function App() {
       <div className="flex-1 flex overflow-hidden w-full max-w-full">
         {/* Left Side: Form Editor */}
         <aside 
-          className={`w-full lg:w-[460px] xl:w-[500px] flex-none h-[calc(100vh-53px)] overflow-hidden no-print ${
+          className={`w-full lg:w-[460px] xl:w-[500px] flex-none h-[calc(100dvh-53px)] lg:h-[calc(100vh-53px)] min-h-0 overflow-hidden no-print ${
             mobileActiveView === 'preview' ? 'hidden lg:block' : 'block'
           }`}
         >
-          <FormEditor data={biodata} onChange={setBiodata} />
+          <FormEditor 
+            data={biodata} 
+            onChange={setBiodata} 
+            onSwitchToPreview={() => setMobileActiveView('preview')}
+          />
         </aside>
 
         {/* Right Side: Live Interactive Preview */}
         <main 
-          className={`flex-1 h-[calc(100vh-53px)] overflow-y-auto relative scroll-smooth print:block print:h-auto print:overflow-visible print:w-full print:p-0 ${
+          className={`flex-1 h-[calc(100dvh-53px)] lg:h-[calc(100vh-53px)] min-h-0 overflow-y-auto relative scroll-smooth print:block print:h-auto print:overflow-visible print:w-full print:p-0 ${
             mobileActiveView === 'editor' ? 'hidden lg:block' : 'block'
           }`}
         >

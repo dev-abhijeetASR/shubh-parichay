@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { THEMES, SHLOKA_PRESETS, getResolvedTheme } from '../../themes';
 import InfoTooltip from '../InfoTooltip';
 import { RASHI_LIST, calculateAge, calculateVedicRashi, normalizeRashiValue } from '../../utils/vedicAstrology';
@@ -17,11 +17,15 @@ import {
   Calendar, 
   Star, 
   RotateCcw,
-  Camera
+  Camera,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
-export default function FormEditor({ data, onChange }) {
-  const [activeTab, setActiveTab] = useState('theme');
+export default function FormEditor({ data, onChange, onSwitchToPreview }) {
+  const [activeTab, setActiveTab] = useState('identity');
+  const contentScrollRef = useRef(null);
+  const tabButtonRefs = useRef({});
 
   const updateField = (field, value) => {
     onChange({ ...data, [field]: value });
@@ -309,14 +313,72 @@ export default function FormEditor({ data, onChange }) {
   };
 
   const tabs = [
-    { id: 'theme', label: 'Theme & Colors', icon: Palette },
     { id: 'identity', label: 'Photos & Identity', icon: User },
     { id: 'personal', label: 'Janma & Kundali', icon: Calendar },
-    { id: 'about', label: 'About & Hobbies', icon: Heart },
     { id: 'career', label: 'Education & Career', icon: GraduationCap },
     { id: 'family', label: 'Family (Parivar)', icon: Users },
+    { id: 'about', label: 'About & Hobbies', icon: Heart },
     { id: 'contact', label: 'Contact & Addresses', icon: Phone },
+    { id: 'theme', label: 'Theme & Colors', icon: Palette },
   ];
+
+  const handleTabChange = (targetTabId) => {
+    setActiveTab(targetTabId);
+    if (contentScrollRef.current) {
+      contentScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    const tabEl = tabButtonRefs.current[targetTabId];
+    if (tabEl) {
+      tabEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  };
+
+  const renderTabNavigation = () => {
+    const currentIndex = tabs.findIndex(t => t.id === activeTab);
+    const prevTab = currentIndex > 0 ? tabs[currentIndex - 1] : null;
+    const nextTab = currentIndex < tabs.length - 1 ? tabs[currentIndex + 1] : null;
+
+    return (
+      <div className="pt-6 mt-6 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-3 select-none pb-6">
+        {prevTab ? (
+          <button
+            type="button"
+            onClick={() => handleTabChange(prevTab.id)}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 font-medium text-xs sm:text-sm transition-all active:scale-[0.98] shadow-xs cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4 text-stone-500" />
+            <span>Back: {prevTab.label}</span>
+          </button>
+        ) : (
+          <div className="hidden sm:block" />
+        )}
+
+        {nextTab ? (
+          <button
+            type="button"
+            onClick={() => handleTabChange(nextTab.id)}
+            className="w-full sm:w-auto ml-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-semibold text-xs sm:text-sm transition-all active:scale-[0.98] shadow-md shadow-amber-900/20 cursor-pointer"
+          >
+            <span>Next: {nextTab.label}</span>
+            <ChevronRight className="w-4 h-4 text-amber-200" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              if (onSwitchToPreview) {
+                onSwitchToPreview();
+              }
+            }}
+            className="w-full sm:w-auto ml-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold text-xs sm:text-sm transition-all active:scale-[0.98] shadow-md shadow-emerald-900/20 cursor-pointer"
+          >
+            <span>Preview & Download Biodata</span>
+            <Sparkles className="w-4 h-4 text-emerald-200" />
+          </button>
+        )}
+      </div>
+    );
+  };
 
   const photoList = Array.isArray(data.photoUrls) && data.photoUrls.length > 0 
     ? data.photoUrls 
@@ -334,7 +396,8 @@ export default function FormEditor({ data, onChange }) {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              ref={(el) => (tabButtonRefs.current[tab.id] = el)}
+              onClick={() => handleTabChange(tab.id)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                 isActive
                   ? 'bg-amber-600 text-white shadow-sm'
@@ -349,264 +412,7 @@ export default function FormEditor({ data, onChange }) {
       </div>
 
       {/* Tab Panels */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-6">
-        {/* TAB 1: THEME & COLOR PALETTE */}
-        {activeTab === 'theme' && (
-          <div className="space-y-6">
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center">
-                  <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-                    1. Select Royal Theme
-                  </h3>
-                  <InfoTooltip 
-                    title="Royal Themes & Customization"
-                    text="Select any of the 5 royal themes. Each theme comes with its authentic Vedic defaults, and you can freely adjust any color below!"
-                  />
-                </div>
-              </div>
-
-              {/* 5 Preset Theme Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {THEMES.map((theme) => {
-                  const isSelected = data.themeId === theme.id;
-                  const themeColors = data.themeOverrides?.[theme.id] || theme;
-                  return (
-                    <button
-                      key={theme.id}
-                      onClick={() => handleSelectTheme(theme.id)}
-                      className={`flex items-center gap-3 p-3 rounded-2xl border text-left transition-all ${
-                        isSelected 
-                          ? 'border-amber-600 ring-2 ring-amber-500/30 bg-amber-50/30' 
-                          : 'border-stone-200 hover:border-stone-300 bg-white'
-                      }`}
-                    >
-                      <div 
-                        className="w-10 h-10 rounded-xl flex-none flex items-center justify-center text-white shadow-sm"
-                        style={{ 
-                          background: `linear-gradient(135deg, ${themeColors.primary}, ${themeColors.secondary})` 
-                        }}
-                      >
-                        {isSelected && <Check className="w-5 h-5 stroke-[3]" />}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-semibold text-stone-900 text-xs md:text-sm truncate">{theme.name}</div>
-                        <div className="text-[11px] text-stone-500 truncate">{theme.subtitle}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Live Color Customizer for Selected Theme */}
-              <div className="mt-4 p-4 rounded-2xl border border-amber-300 bg-amber-50/40 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-amber-950 block">
-                      Customize Colors for {activeThemeBase.name}
-                    </span>
-                    <span className="text-[10px] text-amber-800">
-                      Change any shade while keeping typography &amp; layout intact
-                    </span>
-                  </div>
-                  {hasColorOverrides && (
-                    <button
-                      type="button"
-                      onClick={handleResetThemeColors}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-amber-900 bg-white border border-amber-300 rounded-lg hover:bg-amber-100 transition-colors shadow-2xs"
-                      title="Reset this theme's colors back to its original preset"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Reset</span>
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-xs pt-1">
-                  <div>
-                    <label className="text-[11px] font-semibold text-stone-700 block mb-1">
-                      Primary Royal Shade
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={activeResolvedTheme.primary}
-                        onChange={(e) => handleUpdateThemeColor('primary', e.target.value)}
-                        className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5 bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={activeResolvedTheme.primary}
-                        onChange={(e) => handleUpdateThemeColor('primary', e.target.value)}
-                        className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-semibold text-stone-700 block mb-1">
-                      Accent Gold
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={activeResolvedTheme.accentGold}
-                        onChange={(e) => handleUpdateThemeColor('accentGold', e.target.value)}
-                        className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5 bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={activeResolvedTheme.accentGold}
-                        onChange={(e) => handleUpdateThemeColor('accentGold', e.target.value)}
-                        className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-semibold text-stone-700 block mb-1">
-                      Secondary Accent Warmth
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={activeResolvedTheme.secondary}
-                        onChange={(e) => handleUpdateThemeColor('secondary', e.target.value)}
-                        className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5 bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={activeResolvedTheme.secondary}
-                        onChange={(e) => handleUpdateThemeColor('secondary', e.target.value)}
-                        className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-semibold text-stone-700 block mb-1">
-                      Background Tint (Canvas)
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={activeResolvedTheme.bgCream}
-                        onChange={(e) => handleUpdateThemeColor('bgCream', e.target.value)}
-                        className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5 bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={activeResolvedTheme.bgCream}
-                        onChange={(e) => handleUpdateThemeColor('bgCream', e.target.value)}
-                        className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono bg-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Sacred Shloka Section */}
-            <div className="border-t border-stone-200 pt-5">
-              <div className="flex items-center mb-3">
-                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-                  2. Sacred Shloka / Blessing
-                </h3>
-                <InfoTooltip 
-                  title="Auspicious Shloka / Blessing"
-                  text="Traditional Hindu biodatas open with an auspicious invocation to Lord Ganesha, Radha-Krishna, or Kuldevi/Kuldevta."
-                  example="॥ श्री गणेशाय नमः ॥ or ॥ श्री राधा-कृष्णाभ्यां नमः ॥"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs text-stone-600 font-medium">Select a Preset Blessing:</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {SHLOKA_PRESETS.map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => updateField('shloka', preset.text)}
-                      className={`px-3 py-2 text-xs rounded-xl border text-left transition-all ${
-                        data.shloka === preset.text
-                          ? 'border-amber-600 bg-amber-50 text-amber-900 font-semibold'
-                          : 'border-stone-200 hover:bg-stone-50 text-stone-700'
-                      }`}
-                    >
-                      <div className="font-sanskrit text-sm">{preset.text}</div>
-                      <div className="text-[11px] text-stone-500">{preset.label}</div>
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-3">
-                  <label className="text-xs text-stone-600 font-medium">Or type a Custom Shloka / Blessing:</label>
-                  <input
-                    type="text"
-                    value={data.shloka}
-                    onChange={(e) => updateField('shloka', e.target.value)}
-                    placeholder="e.g. ॥ ॐ श्री गणेशाय नमः ॥ or ॥ ॐ नमो भगवते वासुदेवाय ॥"
-                    className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 font-sanskrit"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Visual Embellishments */}
-            <div className="border-t border-stone-200 pt-5">
-              <div className="flex items-center mb-3">
-                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-                  3. Visual Embellishments
-                </h3>
-                <InfoTooltip 
-                  title="Animations & Background Accents"
-                  text="Toggle falling rose and marigold petals, radiant golden Surya rays, and traditional rotating mandalas."
-                />
-              </div>
-
-              <div className="space-y-2.5">
-                <label className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 cursor-pointer hover:bg-stone-50">
-                  <input
-                    type="checkbox"
-                    checked={data.enablePetals}
-                    onChange={(e) => updateField('enablePetals', e.target.checked)}
-                    className="w-4 h-4 text-amber-600 rounded"
-                  />
-                  <div>
-                    <span className="font-semibold text-stone-800 text-sm block">Falling Petals Animation</span>
-                    <span className="text-xs text-stone-500">Graceful rose & marigold petals shower gently in the background</span>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 cursor-pointer hover:bg-stone-50">
-                  <input
-                    type="checkbox"
-                    checked={data.enableSuryaRays}
-                    onChange={(e) => updateField('enableSuryaRays', e.target.checked)}
-                    className="w-4 h-4 text-amber-600 rounded"
-                  />
-                  <div>
-                    <span className="font-semibold text-stone-800 text-sm block">Golden Surya Rays Behind Arch</span>
-                    <span className="text-xs text-stone-500">Radiant solar aura around the portrait photograph</span>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 cursor-pointer hover:bg-stone-50">
-                  <input
-                    type="checkbox"
-                    checked={data.enableMandala}
-                    onChange={(e) => updateField('enableMandala', e.target.checked)}
-                    className="w-4 h-4 text-amber-600 rounded"
-                  />
-                  <div>
-                    <span className="font-semibold text-stone-800 text-sm block">Rotating Mandalas in Header</span>
-                    <span className="text-xs text-stone-500">Slow rotating traditional Vedic geometric mandalas</span>
-                  </div>
-                </label>
-              </div>
-            </div>
-          </div>
-        )}
-
+      <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6">
         {/* TAB 2: MULTIPLE PHOTOS & CANDIDATE IDENTITY */}
         {activeTab === 'identity' && (
           <div className="space-y-5">
@@ -751,6 +557,8 @@ export default function FormEditor({ data, onChange }) {
                 className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
               />
             </div>
+            {/* Bottom Next / Back Navigation */}
+            {renderTabNavigation()}
           </div>
         )}
 
@@ -1033,6 +841,185 @@ export default function FormEditor({ data, onChange }) {
                 />
               </div>
             </div>
+            {/* Bottom Next / Back Navigation */}
+            {renderTabNavigation()}
+          </div>
+        )}
+
+        {/* TAB 5: EDUCATION & CAREER */}
+        {activeTab === 'career' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                  Education &amp; Career History
+                </h3>
+                <InfoTooltip 
+                  title="Education & Profession Timeline"
+                  text="Add all educational qualifications and work experience milestones. The most recent designation should ideally be at the top."
+                  example="Title: Senior Product Designer · Microsoft / Subtitle: B.Tech IIT Delhi"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={addCareerItem}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Milestone
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {(data.careerItems || []).map((item, idx) => (
+                <div
+                  key={item.id}
+                  className="p-3.5 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-2 relative group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-amber-800">
+                      Milestone #{idx + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeCareerItem(item.id)}
+                      className="text-stone-400 hover:text-red-600 p-1"
+                      title="Delete milestone"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-600 block mb-0.5">Role / Degree Title *</label>
+                    <input
+                      type="text"
+                      value={item.title}
+                      onChange={(e) => updateCareerItem(item.id, 'title', e.target.value)}
+                      placeholder="e.g. Digital Specialist Engineer · Infosys Ltd. or B.E. Computer Science"
+                      className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-600 block mb-0.5">Institution / Details</label>
+                    <input
+                      type="text"
+                      value={item.subtitle}
+                      onChange={(e) => updateCareerItem(item.id, 'subtitle', e.target.value)}
+                      placeholder="e.g. Mumbai University or Specialising in Cloud Architecture"
+                      className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white text-stone-600"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Bottom Next / Back Navigation */}
+            {renderTabNavigation()}
+          </div>
+        )}
+
+        {/* TAB 6: FAMILY MEMBERS (WITH MOTHER'S GOTRA EXPLICITLY) */}
+        {activeTab === 'family' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                  Family Background (Parivar)
+                </h3>
+                <InfoTooltip 
+                  title="Family Background & Gotra"
+                  text="In Indian Hindu traditions, four Gotras are traditionally verified: Self/Father, Mother, Paternal Grandmother, and Maternal Grandmother. Always mention Mother's Maiden Gotra alongside her name!"
+                  example="e.g. Mrs. Reema Singh (Gotra: Sandilya)"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={addFamilyMember}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Member
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {(data.familyMembers || []).map((m, idx) => {
+                const isMother = (m.relation || '').toLowerCase().includes('mother');
+                return (
+                  <div
+                    key={m.id}
+                    className="p-3.5 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-2 relative"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={m.relation}
+                          onChange={(e) => updateFamilyMember(m.id, 'relation', e.target.value)}
+                          placeholder="Relation (e.g. Mother, Father, Grandfather)"
+                          className="px-2 py-1 text-xs font-semibold border border-stone-300 rounded-lg bg-white w-32 uppercase text-amber-800"
+                        />
+                        <label className="flex items-center gap-1.5 text-xs text-stone-600 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={m.isLate}
+                            onChange={(e) => updateFamilyMember(m.id, 'isLate', e.target.checked)}
+                            className="rounded text-amber-600"
+                          />
+                          <span>Late (स्वर्गवासी)</span>
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFamilyMember(m.id)}
+                        className="text-stone-400 hover:text-red-600 p-1"
+                        title="Delete member"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <label className="text-[11px] font-semibold text-stone-600">
+                          {isMother ? "Mother's Full Name (Include Maiden Gotra) *" : "Full Name *"}
+                        </label>
+                        {isMother && (
+                          <span className="text-[10px] text-amber-700 font-bold bg-amber-100 px-1.5 py-0.5 rounded">
+                            Include Gotra
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={m.name}
+                        onChange={(e) => updateFamilyMember(m.id, 'name', e.target.value)}
+                        placeholder={
+                          isMother 
+                            ? "e.g. Mrs. Reema B. Singh (Gotra: Sandilya)" 
+                            : "e.g. Mr. Brajeshkumar T. Singh (or Late Mr. Tejdhari D. Singh)"
+                        }
+                        className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white font-medium"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-semibold text-stone-600 block mb-0.5">Occupation / Designation</label>
+                      <input
+                        type="text"
+                        value={m.role}
+                        onChange={(e) => updateFamilyMember(m.id, 'role', e.target.value)}
+                        placeholder="e.g. Homemaker / Retired B.M.C. Teacher / Businessman / Professor"
+                        className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white text-stone-600"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Bottom Next / Back Navigation */}
+            {renderTabNavigation()}
           </div>
         )}
 
@@ -1167,179 +1154,8 @@ export default function FormEditor({ data, onChange }) {
                 </button>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* TAB 5: EDUCATION & CAREER */}
-        {activeTab === 'career' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-                  Education &amp; Career History
-                </h3>
-                <InfoTooltip 
-                  title="Education & Profession Timeline"
-                  text="Add all educational qualifications and work experience milestones. The most recent designation should ideally be at the top."
-                  example="Title: Senior Product Designer · Microsoft / Subtitle: B.Tech IIT Delhi"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={addCareerItem}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shadow-sm"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add Milestone
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {(data.careerItems || []).map((item, idx) => (
-                <div
-                  key={item.id}
-                  className="p-3.5 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-2 relative group"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-amber-800">
-                      Milestone #{idx + 1}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeCareerItem(item.id)}
-                      className="text-stone-400 hover:text-red-600 p-1"
-                      title="Delete milestone"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-semibold text-stone-600 block mb-0.5">Role / Degree Title *</label>
-                    <input
-                      type="text"
-                      value={item.title}
-                      onChange={(e) => updateCareerItem(item.id, 'title', e.target.value)}
-                      placeholder="e.g. Digital Specialist Engineer · Infosys Ltd. or B.E. Computer Science"
-                      className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-semibold text-stone-600 block mb-0.5">Institution / Details</label>
-                    <input
-                      type="text"
-                      value={item.subtitle}
-                      onChange={(e) => updateCareerItem(item.id, 'subtitle', e.target.value)}
-                      placeholder="e.g. Mumbai University or Specialising in Cloud Architecture"
-                      className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white text-stone-600"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 6: FAMILY MEMBERS (WITH MOTHER'S GOTRA EXPLICITLY) */}
-        {activeTab === 'family' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-                  Family Background (Parivar)
-                </h3>
-                <InfoTooltip 
-                  title="Family Background & Gotra"
-                  text="In Indian Hindu traditions, four Gotras are traditionally verified: Self/Father, Mother, Paternal Grandmother, and Maternal Grandmother. Always mention Mother's Maiden Gotra alongside her name!"
-                  example="e.g. Mrs. Reema Singh (Gotra: Sandilya)"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={addFamilyMember}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shadow-sm"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add Member
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {(data.familyMembers || []).map((m, idx) => {
-                const isMother = (m.relation || '').toLowerCase().includes('mother');
-                return (
-                  <div
-                    key={m.id}
-                    className="p-3.5 rounded-2xl border border-stone-200 bg-stone-50/50 space-y-2 relative"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={m.relation}
-                          onChange={(e) => updateFamilyMember(m.id, 'relation', e.target.value)}
-                          placeholder="Relation (e.g. Mother, Father, Grandfather)"
-                          className="px-2 py-1 text-xs font-semibold border border-stone-300 rounded-lg bg-white w-32 uppercase text-amber-800"
-                        />
-                        <label className="flex items-center gap-1.5 text-xs text-stone-600 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={m.isLate}
-                            onChange={(e) => updateFamilyMember(m.id, 'isLate', e.target.checked)}
-                            className="rounded text-amber-600"
-                          />
-                          <span>Late (स्वर्गवासी)</span>
-                        </label>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeFamilyMember(m.id)}
-                        className="text-stone-400 hover:text-red-600 p-1"
-                        title="Delete member"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-0.5">
-                        <label className="text-[11px] font-semibold text-stone-600">
-                          {isMother ? "Mother's Full Name (Include Maiden Gotra) *" : "Full Name *"}
-                        </label>
-                        {isMother && (
-                          <span className="text-[10px] text-amber-700 font-bold bg-amber-100 px-1.5 py-0.5 rounded">
-                            Include Gotra
-                          </span>
-                        )}
-                      </div>
-                      <input
-                        type="text"
-                        value={m.name}
-                        onChange={(e) => updateFamilyMember(m.id, 'name', e.target.value)}
-                        placeholder={
-                          isMother 
-                            ? "e.g. Mrs. Reema B. Singh (Gotra: Sandilya)" 
-                            : "e.g. Mr. Brajeshkumar T. Singh (or Late Mr. Tejdhari D. Singh)"
-                        }
-                        className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white font-medium"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-semibold text-stone-600 block mb-0.5">Occupation / Designation</label>
-                      <input
-                        type="text"
-                        value={m.role}
-                        onChange={(e) => updateFamilyMember(m.id, 'role', e.target.value)}
-                        placeholder="e.g. Homemaker / Retired B.M.C. Teacher / Businessman / Professor"
-                        className="w-full px-3 py-2 text-sm border border-stone-300 rounded-xl bg-white text-stone-600"
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            {/* Bottom Next / Back Navigation */}
+            {renderTabNavigation()}
           </div>
         )}
 
@@ -1487,6 +1303,267 @@ export default function FormEditor({ data, onChange }) {
                 className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl"
               />
             </div>
+            {/* Bottom Next / Back Navigation */}
+            {renderTabNavigation()}
+          </div>
+        )}
+
+        {/* TAB 1: THEME & COLOR PALETTE */}
+        {activeTab === 'theme' && (
+          <div className="space-y-6">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center">
+                  <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                    1. Select Royal Theme
+                  </h3>
+                  <InfoTooltip 
+                    title="Royal Themes & Customization"
+                    text="Select any of the 5 royal themes. Each theme comes with its authentic Vedic defaults, and you can freely adjust any color below!"
+                  />
+                </div>
+              </div>
+
+              {/* 5 Preset Theme Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {THEMES.map((theme) => {
+                  const isSelected = data.themeId === theme.id;
+                  const themeColors = data.themeOverrides?.[theme.id] || theme;
+                  return (
+                    <button
+                      key={theme.id}
+                      onClick={() => handleSelectTheme(theme.id)}
+                      className={`flex items-center gap-3 p-3 rounded-2xl border text-left transition-all ${
+                        isSelected 
+                          ? 'border-amber-600 ring-2 ring-amber-500/30 bg-amber-50/30' 
+                          : 'border-stone-200 hover:border-stone-300 bg-white'
+                      }`}
+                    >
+                      <div 
+                        className="w-10 h-10 rounded-xl flex-none flex items-center justify-center text-white shadow-sm"
+                        style={{ 
+                          background: `linear-gradient(135deg, ${themeColors.primary}, ${themeColors.secondary})` 
+                        }}
+                      >
+                        {isSelected && <Check className="w-5 h-5 stroke-[3]" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-stone-900 text-xs md:text-sm truncate">{theme.name}</div>
+                        <div className="text-[11px] text-stone-500 truncate">{theme.subtitle}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Live Color Customizer for Selected Theme */}
+              <div className="mt-4 p-4 rounded-2xl border border-amber-300 bg-amber-50/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-950 block">
+                      Customize Colors for {activeThemeBase.name}
+                    </span>
+                    <span className="text-[10px] text-amber-800">
+                      Change any shade while keeping typography &amp; layout intact
+                    </span>
+                  </div>
+                  {hasColorOverrides && (
+                    <button
+                      type="button"
+                      onClick={handleResetThemeColors}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-amber-900 bg-white border border-amber-300 rounded-lg hover:bg-amber-100 transition-colors shadow-2xs"
+                      title="Reset this theme's colors back to its original preset"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-700 block mb-1">
+                      Primary Royal Shade
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={activeResolvedTheme.primary}
+                        onChange={(e) => handleUpdateThemeColor('primary', e.target.value)}
+                        className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5 bg-white"
+                      />
+                      <input
+                        type="text"
+                        value={activeResolvedTheme.primary}
+                        onChange={(e) => handleUpdateThemeColor('primary', e.target.value)}
+                        className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-700 block mb-1">
+                      Accent Gold
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={activeResolvedTheme.accentGold}
+                        onChange={(e) => handleUpdateThemeColor('accentGold', e.target.value)}
+                        className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5 bg-white"
+                      />
+                      <input
+                        type="text"
+                        value={activeResolvedTheme.accentGold}
+                        onChange={(e) => handleUpdateThemeColor('accentGold', e.target.value)}
+                        className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-700 block mb-1">
+                      Secondary Accent Warmth
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={activeResolvedTheme.secondary}
+                        onChange={(e) => handleUpdateThemeColor('secondary', e.target.value)}
+                        className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5 bg-white"
+                      />
+                      <input
+                        type="text"
+                        value={activeResolvedTheme.secondary}
+                        onChange={(e) => handleUpdateThemeColor('secondary', e.target.value)}
+                        className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-stone-700 block mb-1">
+                      Background Tint (Canvas)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={activeResolvedTheme.bgCream}
+                        onChange={(e) => handleUpdateThemeColor('bgCream', e.target.value)}
+                        className="w-8 h-8 rounded-lg cursor-pointer border border-stone-300 p-0.5 bg-white"
+                      />
+                      <input
+                        type="text"
+                        value={activeResolvedTheme.bgCream}
+                        onChange={(e) => handleUpdateThemeColor('bgCream', e.target.value)}
+                        className="w-20 px-2 py-1 text-xs border border-stone-300 rounded-lg uppercase font-mono bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Sacred Shloka Section */}
+            <div className="border-t border-stone-200 pt-5">
+              <div className="flex items-center mb-3">
+                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                  2. Sacred Shloka / Blessing
+                </h3>
+                <InfoTooltip 
+                  title="Auspicious Shloka / Blessing"
+                  text="Traditional Hindu biodatas open with an auspicious invocation to Lord Ganesha, Radha-Krishna, or Kuldevi/Kuldevta."
+                  example="॥ श्री गणेशाय नमः ॥ or ॥ श्री राधा-कृष्णाभ्यां नमः ॥"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs text-stone-600 font-medium">Select a Preset Blessing:</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {SHLOKA_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => updateField('shloka', preset.text)}
+                      className={`px-3 py-2 text-xs rounded-xl border text-left transition-all ${
+                        data.shloka === preset.text
+                          ? 'border-amber-600 bg-amber-50 text-amber-900 font-semibold'
+                          : 'border-stone-200 hover:bg-stone-50 text-stone-700'
+                      }`}
+                    >
+                      <div className="font-sanskrit text-sm">{preset.text}</div>
+                      <div className="text-[11px] text-stone-500">{preset.label}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3">
+                  <label className="text-xs text-stone-600 font-medium">Or type a Custom Shloka / Blessing:</label>
+                  <input
+                    type="text"
+                    value={data.shloka}
+                    onChange={(e) => updateField('shloka', e.target.value)}
+                    placeholder="e.g. ॥ ॐ श्री गणेशाय नमः ॥ or ॥ ॐ नमो भगवते वासुदेवाय ॥"
+                    className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 font-sanskrit"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Visual Embellishments */}
+            <div className="border-t border-stone-200 pt-5">
+              <div className="flex items-center mb-3">
+                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
+                  3. Visual Embellishments
+                </h3>
+                <InfoTooltip 
+                  title="Animations & Background Accents"
+                  text="Toggle falling rose and marigold petals, radiant golden Surya rays, and traditional rotating mandalas."
+                />
+              </div>
+
+              <div className="space-y-2.5">
+                <label className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 cursor-pointer hover:bg-stone-50">
+                  <input
+                    type="checkbox"
+                    checked={data.enablePetals}
+                    onChange={(e) => updateField('enablePetals', e.target.checked)}
+                    className="w-4 h-4 text-amber-600 rounded"
+                  />
+                  <div>
+                    <span className="font-semibold text-stone-800 text-sm block">Falling Petals Animation</span>
+                    <span className="text-xs text-stone-500">Graceful rose & marigold petals shower gently in the background</span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 cursor-pointer hover:bg-stone-50">
+                  <input
+                    type="checkbox"
+                    checked={data.enableSuryaRays}
+                    onChange={(e) => updateField('enableSuryaRays', e.target.checked)}
+                    className="w-4 h-4 text-amber-600 rounded"
+                  />
+                  <div>
+                    <span className="font-semibold text-stone-800 text-sm block">Golden Surya Rays Behind Arch</span>
+                    <span className="text-xs text-stone-500">Radiant solar aura around the portrait photograph</span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 cursor-pointer hover:bg-stone-50">
+                  <input
+                    type="checkbox"
+                    checked={data.enableMandala}
+                    onChange={(e) => updateField('enableMandala', e.target.checked)}
+                    className="w-4 h-4 text-amber-600 rounded"
+                  />
+                  <div>
+                    <span className="font-semibold text-stone-800 text-sm block">Rotating Mandalas in Header</span>
+                    <span className="text-xs text-stone-500">Slow rotating traditional Vedic geometric mandalas</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+            {/* Bottom Next / Back Navigation */}
+            {renderTabNavigation()}
           </div>
         )}
       </div>

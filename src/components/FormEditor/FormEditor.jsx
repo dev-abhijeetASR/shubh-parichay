@@ -19,16 +19,29 @@ import {
   RotateCcw,
   Camera,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  AlertCircle
 } from 'lucide-react';
 
 export default function FormEditor({ data, onChange, onSwitchToPreview }) {
   const [activeTab, setActiveTab] = useState('identity');
+  const [errors, setErrors] = useState({});
+  const MAX_ABOUT_CHARS = 450;
+
+  const clearError = (fieldKey) => {
+    setErrors((prev) => {
+      if (!prev[fieldKey]) return prev;
+      const next = { ...prev };
+      delete next[fieldKey];
+      return next;
+    });
+  };
   const contentScrollRef = useRef(null);
   const tabButtonRefs = useRef({});
 
   const updateField = (field, value) => {
     onChange({ ...data, [field]: value });
+    clearError(field);
   };
 
   const updateNestedField = (parent, field, value) => {
@@ -39,6 +52,10 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
         [field]: value
       }
     });
+    clearError(field);
+    if (field === 'currentAddress' || field === 'nativeAddress') {
+      clearError('address');
+    }
   };
 
   // Get active theme definition and current colors
@@ -103,6 +120,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
             photoUrls: [...existingPhotos],
             photoUrl: existingPhotos[0] || ''
           });
+          clearError('photos');
         }
       };
       reader.readAsDataURL(file);
@@ -133,6 +151,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
   // DOB handler that formats date nicely and automatically updates Age and Vedic Rashi
   const handleDobChange = (e) => {
     const val = e.target.value;
+    clearError('dob');
     let formatted = '';
     if (val) {
       try {
@@ -169,6 +188,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
   // Birth Time handler that recalculates Rashi automatically
   const handleBirthTimeChange = (e) => {
     const timeVal = e.target.value;
+    clearError('birthTime');
     const vedic = data.dob ? calculateVedicRashi(data.dob, timeVal, data.birthPlace) : null;
     onChange({
       ...data,
@@ -181,6 +201,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
   // Birth Place handler that recalculates Rashi
   const handleBirthPlaceChange = (e) => {
     const placeVal = e.target.value;
+    clearError('birthPlace');
     const vedic = data.dob ? calculateVedicRashi(data.dob, data.birthTime, placeVal) : null;
     onChange({
       ...data,
@@ -203,6 +224,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
 
   // Height conversion handlers (Feet/Inches <-> cm)
   const handleFeetInchesChange = (ft, inch) => {
+    clearError('height');
     const feetNum = parseInt(ft) || 0;
     const inchNum = parseInt(inch) || 0;
     const totalInches = (feetNum * 12) + inchNum;
@@ -217,6 +239,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
   };
 
   const handleCmChange = (cmVal) => {
+    clearError('height');
     const cmNum = parseInt(cmVal) || 0;
     let heightStr = data.height || '';
     if (cmNum > 0) {
@@ -243,6 +266,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
 
   // Career timeline repeater handlers
   const addCareerItem = () => {
+    clearError('career');
     const newItem = {
       id: Date.now().toString(),
       title: '',
@@ -252,6 +276,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
   };
 
   const updateCareerItem = (id, field, value) => {
+    clearError('career');
     const updated = (data.careerItems || []).map(item => 
       item.id === id ? { ...item, [field]: value } : item
     );
@@ -264,6 +289,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
 
   // Family repeater handlers
   const addFamilyMember = () => {
+    clearError('family');
     const newMember = {
       id: Date.now().toString(),
       generation: 'Parents',
@@ -276,6 +302,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
   };
 
   const updateFamilyMember = (id, field, value) => {
+    clearError('family');
     const updated = (data.familyMembers || []).map(m => 
       m.id === id ? { ...m, [field]: value } : m
     );
@@ -322,7 +349,102 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
     { id: 'theme', label: 'Theme & Colors', icon: Palette },
   ];
 
+  const validateTab = (tabId) => {
+    const newErrors = {};
+
+    if (tabId === 'identity') {
+      const photos = Array.isArray(data.photoUrls) && data.photoUrls.length > 0 
+        ? data.photoUrls 
+        : (data.photoUrl ? [data.photoUrl] : []);
+      if (photos.length === 0) {
+        newErrors.photos = 'At least 1 candidate photograph is mandatory.';
+      }
+      if (!data.fullName || !data.fullName.trim()) {
+        newErrors.fullName = 'Candidate full name is required.';
+      }
+      if (!data.profileTagline || !data.profileTagline.trim()) {
+        newErrors.profileTagline = 'Headline tagline (Profession & City) is required.';
+      }
+    } else if (tabId === 'personal') {
+      if (!data.dob || !data.dob.trim()) {
+        newErrors.dob = 'Date of birth is required.';
+      }
+      if (!data.birthTime || !data.birthTime.trim()) {
+        newErrors.birthTime = 'Time of birth is required.';
+      }
+      if (!data.birthPlace || !data.birthPlace.trim()) {
+        newErrors.birthPlace = 'Place of birth is required.';
+      }
+      const hasHeight = (data.height && data.height.trim().length > 0) || (data.heightCm && String(data.heightCm).trim().length > 0);
+      if (!hasHeight) {
+        newErrors.height = 'Candidate height is required.';
+      }
+      if (!data.gotra || !data.gotra.trim()) {
+        newErrors.gotra = "Self / Father's Gotra is required.";
+      }
+    } else if (tabId === 'career') {
+      const items = data.careerItems || [];
+      if (items.length === 0 || !items[0]?.title?.trim()) {
+        newErrors.career = 'Please enter at least 1 education or career qualification.';
+      }
+    } else if (tabId === 'family') {
+      const members = data.familyMembers || [];
+      const hasNamedMember = members.some(m => m.name && m.name.trim().length > 0);
+      if (!hasNamedMember) {
+        newErrors.family = 'Please add at least 1 family member name (e.g. Father or Mother).';
+      }
+    } else if (tabId === 'about') {
+      const bio = data.aboutMe || '';
+      if (!bio.trim() || bio.trim().length < 20) {
+        newErrors.aboutMe = 'Please write a brief introduction (minimum 20 characters).';
+      } else if (bio.length > MAX_ABOUT_CHARS) {
+        newErrors.aboutMe = `Bio must not exceed ${MAX_ABOUT_CHARS} characters.`;
+      }
+    } else if (tabId === 'contact') {
+      const phone = data.contacts?.phone?.trim() || '';
+      if (!phone) {
+        newErrors.phone = 'Primary contact phone number is required.';
+      } else if (phone.replace(/[^0-9]/g, '').length < 8) {
+        newErrors.phone = 'Please enter a valid phone number (at least 8 digits).';
+      }
+      const hasAddress = (data.contacts?.currentAddress && data.contacts.currentAddress.trim().length > 0) ||
+                         (data.contacts?.nativeAddress && data.contacts.nativeAddress.trim().length > 0);
+      if (!hasAddress) {
+        newErrors.address = 'Please provide either Current Residence or Native Address.';
+      }
+    }
+
+    return newErrors;
+  };
+
   const handleTabChange = (targetTabId) => {
+    const currentIdx = tabs.findIndex(t => t.id === activeTab);
+    const targetIdx = tabs.findIndex(t => t.id === targetTabId);
+
+    // If moving forward, validate intermediate tabs
+    if (targetIdx > currentIdx) {
+      for (let i = currentIdx; i < targetIdx; i++) {
+        const stepTab = tabs[i];
+        const stepErrors = validateTab(stepTab.id);
+        if (Object.keys(stepErrors).length > 0) {
+          if (stepTab.id !== activeTab) {
+            setActiveTab(stepTab.id);
+          }
+          setErrors(stepErrors);
+          if (contentScrollRef.current) {
+            contentScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+          const tabEl = tabButtonRefs.current[stepTab.id];
+          if (tabEl) {
+            tabEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+          }
+          return false;
+        }
+      }
+    }
+
+    // Moving backward or valid forward move
+    setErrors({});
     setActiveTab(targetTabId);
     if (contentScrollRef.current) {
       contentScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
@@ -331,6 +453,31 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
     if (tabEl) {
       tabEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     }
+    return true;
+  };
+
+  const handleFinalSubmit = () => {
+    for (let i = 0; i < tabs.length; i++) {
+      const stepTab = tabs[i];
+      const stepErrors = validateTab(stepTab.id);
+      if (Object.keys(stepErrors).length > 0) {
+        setActiveTab(stepTab.id);
+        setErrors(stepErrors);
+        if (contentScrollRef.current) {
+          contentScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        const tabEl = tabButtonRefs.current[stepTab.id];
+        if (tabEl) {
+          tabEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+        return false;
+      }
+    }
+
+    if (onSwitchToPreview) {
+      onSwitchToPreview();
+    }
+    return true;
   };
 
   const renderTabNavigation = () => {
@@ -365,11 +512,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
         ) : (
           <button
             type="button"
-            onClick={() => {
-              if (onSwitchToPreview) {
-                onSwitchToPreview();
-              }
-            }}
+            onClick={handleFinalSubmit}
             className="w-full sm:w-auto ml-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold text-xs sm:text-sm transition-all active:scale-[0.98] shadow-md shadow-emerald-900/20 cursor-pointer"
           >
             <span>Preview & Download Biodata</span>
@@ -413,6 +556,24 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
 
       {/* Tab Panels */}
       <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6">
+        {/* Validation Errors Alert Banner */}
+        {Object.keys(errors).length > 0 && (
+          <div className="p-3.5 rounded-2xl bg-red-50 border border-red-300 text-red-900 shadow-sm flex items-start gap-3 animate-fadeIn">
+            <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <AlertCircle className="w-4 h-4 text-red-600" />
+            </div>
+            <div className="text-xs flex-1">
+              <span className="font-bold text-red-950 block text-[13px]">
+                Please fill the required mandatory field{Object.keys(errors).length > 1 ? 's' : ''} to proceed:
+              </span>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-red-800">
+                {Object.entries(errors).map(([key, msg]) => (
+                  <li key={key} className="font-medium">{msg}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
         {/* TAB 2: MULTIPLE PHOTOS & CANDIDATE IDENTITY */}
         {activeTab === 'identity' && (
           <div className="space-y-5">
@@ -420,7 +581,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center">
                   <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-                    Candidate Photographs ({photoList.length} Uploaded)
+                    Candidate Photographs <span className="text-red-500 font-bold">*</span> <span className="text-xs font-normal text-stone-500 ml-1">({photoList.length} Uploaded · 1 required)</span>
                   </h3>
                   <InfoTooltip 
                     title="Multiple Candidate Photos"
@@ -475,7 +636,11 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
                 )}
 
                 {/* Upload Button */}
-                <label className="cursor-pointer flex flex-col items-center justify-center p-4 border-2 border-dashed border-amber-300 rounded-2xl bg-amber-50/40 hover:bg-amber-50 transition-colors">
+                <label className={`cursor-pointer flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-2xl transition-all ${
+                    errors.photos 
+                      ? 'border-red-400 bg-red-50/50 ring-2 ring-red-400/20' 
+                      : 'border-amber-300 hover:border-amber-500 bg-amber-50/40'
+                  }`}>
                   <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 grid place-items-center mb-1 shadow-xs">
                     <Camera className="w-5 h-5" />
                   </div>
@@ -493,13 +658,19 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
                     className="hidden"
                   />
                 </label>
+                {errors.photos && (
+                  <p className="text-xs text-red-600 font-medium mt-1 flex items-center justify-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{errors.photos}</span>
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Full Name */}
             <div className="border-t border-stone-200 pt-4">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-stone-700">Full Name *</label>
+                <label className="text-xs font-semibold text-stone-700">Full Name <span className="text-red-500 font-bold">*</span></label>
                 <InfoTooltip 
                   title="Full Name Format"
                   text="Enter candidate's complete official name. Professional prefixes (e.g. Er., Dr., CA) can be included."
@@ -511,8 +682,16 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
                 value={data.fullName}
                 onChange={(e) => updateField('fullName', e.target.value)}
                 placeholder="e.g. Abhijeet B Singh"
-                className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500 font-medium"
+                className={`w-full mt-1 px-3 py-2 text-sm border rounded-xl focus:ring-2 font-medium ${
+                  errors.fullName ? 'border-red-500 bg-red-50/20 focus:ring-red-400' : 'border-stone-300 focus:ring-amber-500'
+                }`}
               />
+              {errors.fullName && (
+                <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>{errors.fullName}</span>
+                </p>
+              )}
             </div>
 
             {/* Vansh / Lineage / Community Badge */}
@@ -541,7 +720,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
             <div>
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-stone-700">
-                  Subtitle Tagline (Profession &amp; City)
+                  Subtitle Tagline (Profession &amp; City) <span className="text-red-500 font-bold">*</span>
                 </label>
                 <InfoTooltip 
                   title="Subtitle / Header Summary"
@@ -554,8 +733,16 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
                 value={data.profileTagline}
                 onChange={(e) => updateField('profileTagline', e.target.value)}
                 placeholder="e.g. Software Engineer · Infosys Ltd. · Mumbai"
-                className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                className={`w-full mt-1 px-3 py-2 text-sm border rounded-xl focus:ring-2 ${
+                  errors.profileTagline ? 'border-red-500 bg-red-50/20 focus:ring-red-400' : 'border-stone-300 focus:ring-amber-500'
+                }`}
               />
+              {errors.profileTagline && (
+                <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>{errors.profileTagline}</span>
+                </p>
+              )}
             </div>
             {/* Bottom Next / Back Navigation */}
             {renderTabNavigation()}
@@ -580,7 +767,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
               <div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <label className="text-xs font-semibold text-stone-700">Date of Birth</label>
+                    <label className="text-xs font-semibold text-stone-700">Date of Birth <span className="text-red-500 font-bold">*</span></label>
                     {data.dob && calculateAge(data.dob) && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold">
                         Age: {calculateAge(data.dob)} yrs
@@ -597,8 +784,16 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
                   type="date"
                   value={data.dob}
                   onChange={handleDobChange}
-                  className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                  className={`w-full mt-1 px-3 py-2 text-sm border rounded-xl focus:ring-2 ${
+                    errors.dob ? 'border-red-500 bg-red-50/20 focus:ring-red-400' : 'border-stone-300 focus:ring-amber-500'
+                  }`}
                 />
+                {errors.dob && (
+                  <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{errors.dob}</span>
+                  </p>
+                )}
               </div>
 
               {/* Formatted Date */}
@@ -623,7 +818,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
               {/* Birth Time */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-stone-700">Birth Time</label>
+                  <label className="text-xs font-semibold text-stone-700">Birth Time <span className="text-red-500 font-bold">*</span></label>
                   <InfoTooltip 
                     title="Exact Birth Time"
                     text="Essential for casting the exact Lagna Kundali, Moon sign (Rashi), and Navamsha chart."
@@ -635,14 +830,22 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
                   value={data.birthTime}
                   onChange={handleBirthTimeChange}
                   placeholder="e.g. 09:30 AM (or 14:15 Hrs)"
-                  className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                  className={`w-full mt-1 px-3 py-2 text-sm border rounded-xl focus:ring-2 ${
+                    errors.birthTime ? 'border-red-500 bg-red-50/20 focus:ring-red-400' : 'border-stone-300 focus:ring-amber-500'
+                  }`}
                 />
+                {errors.birthTime && (
+                  <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{errors.birthTime}</span>
+                  </p>
+                )}
               </div>
 
               {/* Birth Place */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-stone-700">Birth Place (City, State)</label>
+                  <label className="text-xs font-semibold text-stone-700">Birth Place (City, State) <span className="text-red-500 font-bold">*</span></label>
                   <InfoTooltip 
                     title="Birth Place"
                     text="City and state where candidate was born, needed for astrological coordinates and Rashi."
@@ -654,15 +857,25 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
                   value={data.birthPlace}
                   onChange={handleBirthPlaceChange}
                   placeholder="e.g. Varanasi, Uttar Pradesh"
-                  className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                  className={`w-full mt-1 px-3 py-2 text-sm border rounded-xl focus:ring-2 ${
+                    errors.birthPlace ? 'border-red-500 bg-red-50/20 focus:ring-red-400' : 'border-stone-300 focus:ring-amber-500'
+                  }`}
                 />
+                {errors.birthPlace && (
+                  <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{errors.birthPlace}</span>
+                  </p>
+                )}
               </div>
 
               {/* DUAL HEIGHT BUILDER: Feet/Inches & cm */}
-              <div className="sm:col-span-2 p-3 rounded-2xl border border-amber-200 bg-amber-50/30">
+              <div className={`sm:col-span-2 p-3 rounded-2xl border transition-all ${
+                  errors.height ? 'border-red-400 bg-red-50/30 ring-2 ring-red-400/20' : 'border-amber-200 bg-amber-50/30'
+                }`}>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-bold text-amber-950 uppercase tracking-wider">
-                    Candidate Height (Feet &amp; cm)
+                    Candidate Height (Feet &amp; cm) <span className="text-red-500 font-bold">*</span>
                   </label>
                   <InfoTooltip 
                     title="Height in Feet & cm"
@@ -713,6 +926,12 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
                   Preview display: <span className="font-bold">{data.height} {data.heightCm ? `(${data.heightCm} cm)` : ''}</span>
                 </div>
               </div>
+              {errors.height && (
+                <p className="sm:col-span-2 text-xs text-red-600 font-medium -mt-2 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>{errors.height}</span>
+                </p>
+              )}
 
               {/* Manglik */}
               <div>
@@ -849,10 +1068,16 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
         {/* TAB 5: EDUCATION & CAREER */}
         {activeTab === 'career' && (
           <div className="space-y-4">
+            {errors.career && (
+              <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                <span>{errors.career}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-                  Education &amp; Career History
+                  Education &amp; Career History <span className="text-red-500 font-bold">*</span>
                 </h3>
                 <InfoTooltip 
                   title="Education & Profession Timeline"
@@ -921,10 +1146,16 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
         {/* TAB 6: FAMILY MEMBERS (WITH MOTHER'S GOTRA EXPLICITLY) */}
         {activeTab === 'family' && (
           <div className="space-y-4">
+            {errors.family && (
+              <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                <span>{errors.family}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-                  Family Background (Parivar)
+                  Family Background (Parivar) <span className="text-red-500 font-bold">*</span>
                 </h3>
                 <InfoTooltip 
                   title="Family Background & Gotra"
@@ -1029,7 +1260,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
             <div>
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-                  Introduction &amp; Lifestyle
+                  Introduction &amp; Lifestyle <span className="text-red-500 font-bold">*</span>
                 </h3>
                 <InfoTooltip 
                   title="About Me Bio"
@@ -1040,11 +1271,35 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
 
               <textarea
                 rows={4}
+                maxLength={MAX_ABOUT_CHARS}
                 value={data.aboutMe}
                 onChange={(e) => updateField('aboutMe', e.target.value)}
                 placeholder="e.g. I appreciate the beauty of diverse experiences and hold my family, friends, and personal interests in high regard. My academic journey led me to pursue a degree in Computer Science..."
-                className="w-full mt-2 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                className={`w-full mt-2 px-3 py-2 text-sm border rounded-xl focus:ring-2 ${
+                  errors.aboutMe ? 'border-red-500 bg-red-50/20 focus:ring-red-400' : 'border-stone-300 focus:ring-amber-500'
+                }`}
               />
+              <div className="flex items-center justify-between mt-1 text-xs">
+                {errors.aboutMe ? (
+                  <span className="text-red-600 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{errors.aboutMe}</span>
+                  </span>
+                ) : (
+                  <span className="text-stone-500 text-[11px]">
+                    Keep bio concise so it fits comfortably on A4 print.
+                  </span>
+                )}
+                <span className={`font-mono text-[11px] font-semibold ${
+                  (data.aboutMe || '').length >= MAX_ABOUT_CHARS 
+                    ? 'text-red-600 font-bold' 
+                    : (data.aboutMe || '').length >= MAX_ABOUT_CHARS - 30 
+                      ? 'text-amber-600' 
+                      : 'text-stone-500'
+                }`}>
+                  {(data.aboutMe || '').length} / {MAX_ABOUT_CHARS} chars
+                </span>
+              </div>
             </div>
 
             {/* Hobbies */}
@@ -1175,7 +1430,7 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-stone-700">Phone / WhatsApp *</label>
+                  <label className="text-xs font-semibold text-stone-700">Phone / WhatsApp <span className="text-red-500 font-bold">*</span></label>
                   <InfoTooltip 
                     title="Phone / WhatsApp"
                     text="Active phone number for matrimonial correspondence."
@@ -1187,8 +1442,16 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
                   value={data.contacts?.phone || ''}
                   onChange={(e) => updateNestedField('contacts', 'phone', e.target.value)}
                   placeholder="e.g. +91 98695 07492"
-                  className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                  className={`w-full mt-1 px-3 py-2 text-sm border rounded-xl focus:ring-2 ${
+                    errors.phone ? 'border-red-500 bg-red-50/20 focus:ring-red-400' : 'border-stone-300 focus:ring-amber-500'
+                  }`}
                 />
+                {errors.phone && (
+                  <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{errors.phone}</span>
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1244,8 +1507,16 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
                 value={data.contacts?.currentAddress || ''}
                 onChange={(e) => updateNestedField('contacts', 'currentAddress', e.target.value)}
                 placeholder="e.g. 603, Bldg No. 61, EMP Phase 4, Thakur Village, Kandivali East, Mumbai 400101"
-                className="w-full mt-1 px-3 py-2 text-sm border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                className={`w-full mt-1 px-3 py-2 text-sm border rounded-xl focus:ring-2 ${
+                  errors.address ? 'border-red-500 bg-red-50/20 focus:ring-red-400' : 'border-stone-300 focus:ring-amber-500'
+                }`}
               />
+              {errors.address && (
+                <p className="text-xs text-red-600 font-medium mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>{errors.address}</span>
+                </p>
+              )}
             </div>
 
             <div>

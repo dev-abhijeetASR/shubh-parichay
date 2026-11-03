@@ -1,4 +1,4 @@
-import { getResolvedTheme } from '../themes';
+import { getResolvedTheme } from '../themes.js';
 
 export function generateStandaloneHtml(data) {
   const theme = getResolvedTheme(data);

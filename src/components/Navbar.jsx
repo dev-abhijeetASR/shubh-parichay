@@ -52,8 +52,8 @@ export default function Navbar({
     }, 800);
   };
 
-  // Print PDF with automatic mobile preview mount
-  const handlePrintPdf = () => {
+  // Print PDF with automatic mobile preview mount and image decoding
+  const handlePrintPdf = async () => {
     // Automatically record text submission for developer in background
     recordUserSubmission(data);
 
@@ -63,14 +63,38 @@ export default function Navbar({
       setMobileActiveView('preview');
     }
 
-    // Give browser a short tick to render the preview DOM before triggering print
+    // Preload & decode photos before print dialog opens so images are fully rasterized
+    const photosToDecode = Array.isArray(data.photoUrls) && data.photoUrls.length > 0
+      ? data.photoUrls
+      : (data.photoUrl ? [data.photoUrl] : []);
+
+    if (photosToDecode.length > 0) {
+      await Promise.allSettled(
+        photosToDecode.slice(0, 3).map(url => {
+          return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              if (img.decode) {
+                img.decode().then(resolve).catch(resolve);
+              } else {
+                resolve();
+              }
+            };
+            img.onerror = resolve;
+            img.src = url;
+          });
+        })
+      );
+    }
+
+    // Give browser sufficient ticks to layout and rasterize the preview DOM before triggering print
     setTimeout(() => {
       window.print();
       // Prompt for feedback after printing dialog closes
       setTimeout(() => {
         onOpenFeedback?.();
       }, 1200);
-    }, 250);
+    }, 400);
   };
 
   // Download JSON backup

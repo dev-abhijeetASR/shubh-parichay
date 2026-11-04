@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { THEMES, SHLOKA_PRESETS, getResolvedTheme } from '../../themes';
 import InfoTooltip from '../InfoTooltip';
 import { RASHI_LIST, calculateAge, calculateVedicRashi, normalizeRashiValue } from '../../utils/vedicAstrology';
+import { optimizeImageFile } from '../../utils/imageOptimizer';
 import { 
   Palette, 
   User, 
@@ -103,28 +104,41 @@ export default function FormEditor({ data, onChange, onSwitchToPreview }) {
     });
   };
 
-  // Multiple Photos Upload Handler
-  const handleMultiplePhotoUpload = (e) => {
+  // Multiple Photos Upload Handler with automatic compression & arch priority
+  const handleMultiplePhotoUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    const existingPhotos = Array.isArray(data.photoUrls) ? [...data.photoUrls] : (data.photoUrl ? [data.photoUrl] : []);
+    // Reset input value so selecting the same file again still fires change
+    e.target.value = '';
 
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (reader.result) {
-          existingPhotos.push(reader.result);
-          onChange({
-            ...data,
-            photoUrls: [...existingPhotos],
-            photoUrl: existingPhotos[0] || ''
-          });
-          clearError('photos');
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    // Check if currently holding default sample photos (Unsplash URLs)
+    const currentPhotos = Array.isArray(data.photoUrls) ? [...data.photoUrls] : (data.photoUrl ? [data.photoUrl] : []);
+    const isSampleData = currentPhotos.length > 0 && currentPhotos.every(url => typeof url === 'string' && url.includes('images.unsplash.com'));
+
+    // If it was sample data, start fresh with the user's real photos!
+    const basePhotos = isSampleData ? [] : currentPhotos;
+
+    try {
+      // Optimize & scale down all selected photos in parallel
+      const optimizedUrls = await Promise.all(
+        files.map(file => optimizeImageFile(file))
+      );
+      const validNew = optimizedUrls.filter(Boolean);
+      if (validNew.length === 0) return;
+
+      // Put newly uploaded photos at the FRONT so user's photo is immediately the Arch Portrait!
+      const updatedPhotos = [...validNew, ...basePhotos];
+
+      onChange({
+        ...data,
+        photoUrls: updatedPhotos,
+        photoUrl: updatedPhotos[0] || ''
+      });
+      clearError('photos');
+    } catch (err) {
+      console.error('Failed to process image upload:', err);
+    }
   };
 
   const setPrimaryPhoto = (index) => {

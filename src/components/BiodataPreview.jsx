@@ -65,14 +65,36 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
   const activePhoto = photoList[currentPhotoIdx] || primaryPhoto;
   const additionalPhotos = photoList.slice(1);
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     // Automatically record text submission for developer in background
     recordUserSubmission(data);
 
-    window.print();
+    // Preload & decode photos before print dialog opens
+    if (photoList.length > 0) {
+      await Promise.allSettled(
+        photoList.slice(0, 3).map(url => {
+          return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              if (img.decode) {
+                img.decode().then(resolve).catch(resolve);
+              } else {
+                resolve();
+              }
+            };
+            img.onerror = resolve;
+            img.src = url;
+          });
+        })
+      );
+    }
+
     setTimeout(() => {
-      onOpenFeedback?.();
-    }, 1200);
+      window.print();
+      setTimeout(() => {
+        onOpenFeedback?.();
+      }, 1200);
+    }, 350);
   };
 
   // Responsive wrapper styling
@@ -128,7 +150,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
           )}
 
           {/* Arched Portrait with Surya Rays & Navigation Arrows */}
-          <div className="relative mx-auto w-40 md:w-48 aspect-[4/5] flex items-center justify-center">
+          <div className="biodata-arch-container relative mx-auto w-40 md:w-48 aspect-[4/5] flex items-center justify-center">
             {data.enableSuryaRays && (
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] md:w-[340px] h-[280px] md:h-[340px] pointer-events-none">
                 <SuryaRaysSvg className="w-full h-full" />
@@ -159,7 +181,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
             {/* The Arch Frame */}
             <div 
               onClick={() => setActiveModalImage(activePhoto)}
-              className="relative w-full h-full overflow-hidden border-4 shadow-2xl z-10 cursor-pointer group"
+              className="biodata-arch-frame relative w-full h-full overflow-hidden border-4 shadow-2xl z-10 cursor-pointer group"
               style={{
                 borderRadius: '50% 50% 18px 18px / 40% 40% 18px 18px',
                 borderColor: theme.goldLight,
@@ -170,7 +192,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
               <img 
                 src={activePhoto} 
                 alt={`${data.fullName} - Photo ${currentPhotoIdx + 1}`}
-                className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                className="biodata-arch-img w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
               />
 
               {/* Counter Pill in Arch */}
@@ -289,7 +311,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
                     setCurrentPhotoIdx(idx);
                     setActiveModalImage(imgUrl);
                   }}
-                  className="group relative aspect-[4/5] rounded-xl overflow-hidden border-2 cursor-pointer shadow-sm hover:shadow-lg transition-all"
+                  className="gallery-print-thumb group relative aspect-[4/5] rounded-xl overflow-hidden border-2 cursor-pointer shadow-sm hover:shadow-lg transition-all"
                   style={{ borderColor: idx === currentPhotoIdx ? theme.accentGold : theme.borderColor }}
                 >
                   <img 

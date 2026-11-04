@@ -96,10 +96,73 @@ html, body {
     padding: 0 !important;
   }
 
-  #root, .min-h-screen, div {
+  #root, .min-h-screen {
     overflow: visible !important;
     height: auto !important;
     max-height: none !important;
+  }
+
+  /* Ensure candidate photos and arched portrait are always preserved in PDF & print */
+  img {
+    max-width: 100% !important;
+    display: block !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .biodata-arch-container {
+    width: 175px !important;
+    height: 220px !important;
+    min-height: 220px !important;
+    max-height: 220px !important;
+    margin: 0 auto !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .biodata-arch-frame {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 220px !important;
+    max-height: 220px !important;
+    position: relative !important;
+    overflow: hidden !important;
+    display: block !important;
+    border-radius: 50% 50% 18px 18px / 40% 40% 18px 18px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .biodata-arch-frame img,
+  .biodata-arch-img {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 220px !important;
+    max-height: 220px !important;
+    object-fit: cover !important;
+    object-position: top !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .gallery-print-thumb {
+    width: 100% !important;
+    height: 160px !important;
+    min-height: 160px !important;
+    display: block !important;
+    overflow: hidden !important;
+  }
+
+  .gallery-print-thumb img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
   }
 
   /* Force main preview to ALWAYS be visible during print, even if mobile view was on editor */

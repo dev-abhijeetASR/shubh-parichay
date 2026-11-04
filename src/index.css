@@ -179,9 +179,24 @@ html, body {
     padding: 0 !important;
   }
 
-  /* Hide navigation, editor aside, petals, tooltips, modals and print-hidden elements */
+  /* Ensure the Royal Hero Banner with Portrait Photo is ALWAYS visible in print */
+  .biodata-hero {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    position: relative !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .biodata-hero * {
+    visibility: visible !important;
+  }
+
+  /* Hide navigation, editor aside, petals, tooltips, modals and print-hidden elements (DO NOT hide header tag as it's used for hero banner) */
   aside,
-  header,
   nav,
   .no-print,
   .petal,

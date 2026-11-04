@@ -4,22 +4,22 @@ import { MandalaSvg, SuryaRaysSvg, VanshSunIcon } from './MandalaRaysSvg';
 import { getResolvedTheme } from '../themes';
 import { recordUserSubmission } from '../utils/recordSubmission';
 import { calculateAge } from '../utils/vedicAstrology';
-import { 
-  Heart, 
-  User, 
-  GraduationCap, 
-  Sparkles, 
-  Users, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Home, 
-  Share2, 
-  Printer, 
-  Camera, 
-  X, 
-  ChevronLeft, 
-  ChevronRight 
+import {
+  Heart,
+  User,
+  GraduationCap,
+  Sparkles,
+  Users,
+  Phone,
+  Mail,
+  MapPin,
+  Home,
+  Share2,
+  Printer,
+  Camera,
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFeedback }) {
@@ -98,14 +98,14 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
   };
 
   // Responsive wrapper styling
-  const wrapperWidth = previewMode === 'mobile' 
-    ? 'max-w-[420px]' 
-    : previewMode === 'tablet' 
-      ? 'max-w-[640px]' 
+  const wrapperWidth = previewMode === 'mobile'
+    ? 'max-w-[420px]'
+    : previewMode === 'tablet'
+      ? 'max-w-[640px]'
       : 'max-w-[820px]';
 
   return (
-    <div 
+    <div
       className="w-full min-h-full py-8 px-3 transition-colors duration-300 print:p-0 print:m-0 print:bg-white print:min-h-0"
       style={{
         background: `
@@ -122,7 +122,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
         <KalashSvg className="w-24 md:w-28 h-auto mx-auto drop-shadow-lg" />
 
         {/* Shloka */}
-        <p 
+        <p
           className="text-center font-sanskrit font-semibold text-lg md:text-xl tracking-wider mt-3"
           style={{ color: theme.headerColor }}
         >
@@ -130,8 +130,8 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
         </p>
 
         {/* Hero Section */}
-        <header 
-          className="relative mt-5 text-center rounded-3xl p-6 md:p-10 text-white overflow-hidden shadow-2xl transition-all"
+        <div
+          className="biodata-hero relative mt-5 text-center rounded-3xl p-6 md:p-10 text-white overflow-hidden shadow-2xl transition-all print:mt-2 print:p-6"
           style={{
             background: `radial-gradient(circle at 50% 0%, rgba(255,214,120,0.35), transparent 55%), ${theme.heroBg}`,
             boxShadow: `0 20px 50px -15px ${theme.primary}66`
@@ -166,20 +166,19 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
                   if (currentPhotoIdx > 0) setCurrentPhotoIdx((i) => i - 1);
                 }}
                 disabled={currentPhotoIdx === 0}
-                className={`no-print absolute -left-5 md:-left-6 top-1/2 -translate-y-1/2 z-30 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center shadow-lg transition-all ${
-                  currentPhotoIdx === 0
+                className={`no-print absolute -left-5 md:-left-6 top-1/2 -translate-y-1/2 z-30 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center shadow-lg transition-all ${currentPhotoIdx === 0
                     ? 'opacity-25 cursor-not-allowed bg-stone-900/60 text-stone-400 pointer-events-none border border-white/10'
                     : 'opacity-90 hover:opacity-100 hover:scale-110 active:scale-95 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-bold cursor-pointer ring-2 ring-amber-200 shadow-amber-950/40'
-                }`}
+                  }`}
                 aria-label="Previous photo"
                 title={currentPhotoIdx === 0 ? "First photo" : "Previous photo"}
               >
                 <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
               </button>
             )}
-            
+
             {/* The Arch Frame */}
-            <div 
+            <div
               onClick={() => setActiveModalImage(activePhoto)}
               className="biodata-arch-frame relative w-full h-full overflow-hidden border-4 shadow-2xl z-10 cursor-pointer group"
               style={{
@@ -189,8 +188,8 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
               }}
               title="Click to view full photo"
             >
-              <img 
-                src={activePhoto} 
+              <img
+                src={activePhoto}
                 alt={`${data.fullName} - Photo ${currentPhotoIdx + 1}`}
                 className="biodata-arch-img w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
               />
@@ -212,11 +211,10 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
                   if (currentPhotoIdx < photoList.length - 1) setCurrentPhotoIdx((i) => i + 1);
                 }}
                 disabled={currentPhotoIdx === photoList.length - 1}
-                className={`no-print absolute -right-5 md:-right-6 top-1/2 -translate-y-1/2 z-30 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center shadow-lg transition-all ${
-                  currentPhotoIdx === photoList.length - 1
+                className={`no-print absolute -right-5 md:-right-6 top-1/2 -translate-y-1/2 z-30 w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center shadow-lg transition-all ${currentPhotoIdx === photoList.length - 1
                     ? 'opacity-25 cursor-not-allowed bg-stone-900/60 text-stone-400 pointer-events-none border border-white/10'
                     : 'opacity-90 hover:opacity-100 hover:scale-110 active:scale-95 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-bold cursor-pointer ring-2 ring-amber-200 shadow-amber-950/40'
-                }`}
+                  }`}
                 aria-label="Next photo"
                 title={currentPhotoIdx === photoList.length - 1 ? "Last photo" : "Next photo"}
               >
@@ -235,7 +233,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
 
           {/* Vansh / Community Badge */}
           {data.communityBadge && (
-            <div 
+            <div
               className="inline-flex items-center gap-2 mt-3 px-5 py-1 rounded-full font-sanskrit text-base md:text-lg font-medium shadow-md"
               style={{
                 background: theme.badgeBg,
@@ -274,19 +272,19 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
               </span>
             )}
           </div>
-        </header>
+        </div>
 
         {/* Section: Multiple Photographs Gallery */}
         {additionalPhotos.length > 0 && (
-          <section 
+          <section
             className="relative mt-6 rounded-2xl p-6 border shadow-md transition-all print-break-inside-avoid"
-            style={{ 
-              backgroundColor: theme.cardBg, 
-              borderColor: theme.borderColor 
+            style={{
+              backgroundColor: theme.cardBg,
+              borderColor: theme.borderColor
             }}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div 
+              <div
                 className="w-10 h-10 rounded-xl grid place-items-center text-white shadow-sm flex-none"
                 style={{ background: `linear-gradient(135deg, ${theme.secondary}, ${theme.primary})` }}
               >
@@ -305,7 +303,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
               {photoList.map((imgUrl, idx) => (
-                <div 
+                <div
                   key={idx}
                   onClick={() => {
                     setCurrentPhotoIdx(idx);
@@ -314,8 +312,8 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
                   className="gallery-print-thumb group relative aspect-[4/5] rounded-xl overflow-hidden border-2 cursor-pointer shadow-sm hover:shadow-lg transition-all"
                   style={{ borderColor: idx === currentPhotoIdx ? theme.accentGold : theme.borderColor }}
                 >
-                  <img 
-                    src={imgUrl} 
+                  <img
+                    src={imgUrl}
                     alt={`Candidate photo ${idx + 1}`}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
@@ -339,15 +337,15 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
 
         {/* Section: About Me */}
         {data.aboutMe && (
-          <section 
+          <section
             className="relative mt-6 rounded-2xl p-6 border shadow-md transition-all print-break-inside-avoid"
-            style={{ 
-              backgroundColor: theme.cardBg, 
-              borderColor: theme.borderColor 
+            style={{
+              backgroundColor: theme.cardBg,
+              borderColor: theme.borderColor
             }}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div 
+              <div
                 className="w-10 h-10 rounded-xl grid place-items-center text-white shadow-sm flex-none"
                 style={{ background: `linear-gradient(135deg, ${theme.secondary}, ${theme.primary})` }}
               >
@@ -370,15 +368,15 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
         )}
 
         {/* Section: Personal & Kundali Details */}
-        <section 
+        <section
           className="relative mt-6 rounded-2xl p-6 border shadow-md transition-all print-break-inside-avoid"
-          style={{ 
-            backgroundColor: theme.cardBg, 
-            borderColor: theme.borderColor 
+          style={{
+            backgroundColor: theme.cardBg,
+            borderColor: theme.borderColor
           }}
         >
           <div className="flex items-center gap-3 mb-4">
-            <div 
+            <div
               className="w-10 h-10 rounded-xl grid place-items-center text-white shadow-sm flex-none"
               style={{ background: `linear-gradient(135deg, ${theme.secondary}, ${theme.primary})` }}
             >
@@ -460,15 +458,15 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
         </section>
 
         {/* Section: Education & Career */}
-        <section 
+        <section
           className="relative mt-6 rounded-2xl p-6 border shadow-md transition-all print-break-inside-avoid"
-          style={{ 
-            backgroundColor: theme.cardBg, 
-            borderColor: theme.borderColor 
+          style={{
+            backgroundColor: theme.cardBg,
+            borderColor: theme.borderColor
           }}
         >
           <div className="flex items-center gap-3 mb-4">
-            <div 
+            <div
               className="w-10 h-10 rounded-xl grid place-items-center text-white shadow-sm flex-none"
               style={{ background: `linear-gradient(135deg, ${theme.secondary}, ${theme.primary})` }}
             >
@@ -486,13 +484,13 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
           </div>
 
           <div className="relative pl-7 space-y-4">
-            <div 
-              className="absolute left-2.5 top-2 bottom-2 w-0.5" 
+            <div
+              className="absolute left-2.5 top-2 bottom-2 w-0.5"
               style={{ background: `linear-gradient(to bottom, ${theme.secondary}, ${theme.goldLight})` }}
             />
             {(data.careerItems || []).map((item) => (
               <div key={item.id} className="relative">
-                <div 
+                <div
                   className="absolute -left-7 top-1 w-3.5 h-3.5 rounded-full bg-white border-[3px]"
                   style={{ borderColor: theme.secondary, boxShadow: '0 0 0 3px #fff2db' }}
                 />
@@ -510,15 +508,15 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
         </section>
 
         {/* Section: Interests & Languages */}
-        <section 
+        <section
           className="relative mt-6 rounded-2xl p-6 border shadow-md transition-all print-break-inside-avoid"
-          style={{ 
-            backgroundColor: theme.cardBg, 
-            borderColor: theme.borderColor 
+          style={{
+            backgroundColor: theme.cardBg,
+            borderColor: theme.borderColor
           }}
         >
           <div className="flex items-center gap-3 mb-4">
-            <div 
+            <div
               className="w-10 h-10 rounded-xl grid place-items-center text-white shadow-sm flex-none"
               style={{ background: `linear-gradient(135deg, ${theme.secondary}, ${theme.primary})` }}
             >
@@ -537,8 +535,8 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
 
           <div className="flex flex-wrap gap-2.5">
             {(data.hobbies || []).map((h, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className="flex items-center gap-2.5 py-1.5 px-3 rounded-full bg-white border border-amber-200/80 shadow-xs text-sm font-medium text-stone-800"
               >
                 <span className="w-7 h-7 rounded-full grid place-items-center bg-gradient-to-br from-amber-100 to-amber-200 text-base">
@@ -553,8 +551,8 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
             <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-stone-600">
               <span className="font-medium">Speaks:</span>
               {data.languages.map((lang, idx) => (
-                <span 
-                  key={idx} 
+                <span
+                  key={idx}
                   className="px-3 py-1 rounded-full text-xs font-medium text-amber-100 shadow-xs"
                   style={{ backgroundColor: theme.primary }}
                 >
@@ -566,15 +564,15 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
         </section>
 
         {/* Section: Family Parivar */}
-        <section 
+        <section
           className="relative mt-6 rounded-2xl p-6 border shadow-md transition-all print-break-inside-avoid"
-          style={{ 
-            backgroundColor: theme.cardBg, 
-            borderColor: theme.borderColor 
+          style={{
+            backgroundColor: theme.cardBg,
+            borderColor: theme.borderColor
           }}
         >
           <div className="flex items-center gap-3 mb-4">
-            <div 
+            <div
               className="w-10 h-10 rounded-xl grid place-items-center text-white shadow-sm flex-none"
               style={{ background: `linear-gradient(135deg, ${theme.secondary}, ${theme.primary})` }}
             >
@@ -593,15 +591,15 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {(data.familyMembers || []).map((fam) => (
-              <div 
-                key={fam.id} 
+              <div
+                key={fam.id}
                 className="text-center p-4 rounded-xl border border-amber-100 bg-gradient-to-b from-white to-amber-50/50 shadow-xs relative"
               >
-                <div 
+                <div
                   className="w-12 h-12 mx-auto mb-2 rounded-full grid place-items-center font-serif text-lg font-bold text-white shadow-md ring-2 ring-white ring-offset-2 ring-offset-amber-200"
                   style={{
-                    background: fam.isLate 
-                      ? 'linear-gradient(135deg, #8a7a6a, #5e5146)' 
+                    background: fam.isLate
+                      ? 'linear-gradient(135deg, #8a7a6a, #5e5146)'
                       : `linear-gradient(135deg, ${theme.primary}, #b23a48)`
                   }}
                 >
@@ -624,15 +622,15 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
         </section>
 
         {/* Section: Contact & Addresses */}
-        <section 
+        <section
           className="relative mt-6 rounded-2xl p-6 border shadow-md transition-all print-break-inside-avoid"
-          style={{ 
-            backgroundColor: theme.cardBg, 
-            borderColor: theme.borderColor 
+          style={{
+            backgroundColor: theme.cardBg,
+            borderColor: theme.borderColor
           }}
         >
           <div className="flex items-center gap-3 mb-4">
-            <div 
+            <div
               className="w-10 h-10 rounded-xl grid place-items-center text-white shadow-sm flex-none"
               style={{ background: `linear-gradient(135deg, ${theme.secondary}, ${theme.primary})` }}
             >
@@ -651,7 +649,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
 
           <div className="grid gap-3">
             {data.contacts?.phone && (
-              <a 
+              <a
                 href={`tel:${data.contacts.phone.replace(/\s+/g, '')}`}
                 className="flex items-center gap-3.5 p-3.5 rounded-xl bg-white border border-amber-200/80 shadow-xs hover:-translate-y-0.5 transition-all text-stone-800"
               >
@@ -668,7 +666,7 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
             )}
 
             {data.contacts?.email && (
-              <a 
+              <a
                 href={`mailto:${data.contacts.email}`}
                 className="flex items-center gap-3.5 p-3.5 rounded-xl bg-white border border-amber-200/80 shadow-xs hover:-translate-y-0.5 transition-all text-stone-800"
               >
@@ -685,13 +683,13 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
             )}
 
             {data.contacts?.currentAddress && (
-              <a 
+              <a
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.contacts.currentAddress)}`}
-                target="_blank" 
+                target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-3.5 p-3.5 rounded-xl bg-white border border-amber-200/80 shadow-xs hover:-translate-y-0.5 transition-all text-stone-800"
               >
-                <div 
+                <div
                   className="w-10 h-10 rounded-xl grid place-items-center text-white shadow-sm flex-none"
                   style={{ background: `linear-gradient(135deg, ${theme.primary}, #b23a48)` }}
                 >
@@ -707,9 +705,9 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
             )}
 
             {data.contacts?.nativeAddress && (
-              <a 
+              <a
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.contacts.nativeAddress)}`}
-                target="_blank" 
+                target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-3.5 p-3.5 rounded-xl bg-white border border-amber-200/80 shadow-xs hover:-translate-y-0.5 transition-all text-stone-800"
               >
@@ -737,15 +735,15 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
 
         {/* Floating Action Bar */}
         <div className="no-print fixed left-1/2 bottom-5 -translate-x-1/2 z-40 flex items-center gap-2.5 p-2 rounded-full bg-stone-900/90 text-white backdrop-blur-md shadow-2xl border border-white/10">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => {
               if (navigator.share) {
                 navigator.share({
                   title: `${data.fullName} · Biodata`,
                   text: `Biodata of ${data.fullName}`,
                   url: window.location.href
-                }).catch(() => {});
+                }).catch(() => { });
               } else {
                 navigator.clipboard.writeText(window.location.href);
                 alert('Page link copied to clipboard!');
@@ -757,8 +755,8 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
             <span>Share</span>
           </button>
 
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={handlePrint}
             className="flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm text-amber-100 border border-amber-300/40 hover:bg-white/10 transition-all"
           >
@@ -770,11 +768,11 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
 
       {/* Image Modal Lightbox with Carousel Controls */}
       {activeModalImage && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 no-print"
           onClick={() => setActiveModalImage(null)}
         >
-          <div 
+          <div
             className="relative max-w-2xl max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl border-2 border-amber-400 bg-stone-950 flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
@@ -800,11 +798,10 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
                   }
                 }}
                 disabled={currentPhotoIdx === 0}
-                className={`absolute left-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all ${
-                  currentPhotoIdx === 0
+                className={`absolute left-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all ${currentPhotoIdx === 0
                     ? 'opacity-25 cursor-not-allowed bg-stone-900/60 text-stone-400 pointer-events-none'
                     : 'opacity-90 hover:opacity-100 bg-amber-500 text-stone-950 font-bold hover:scale-110 active:scale-95'
-                }`}
+                  }`}
                 aria-label="Previous photo"
                 title={currentPhotoIdx === 0 ? "First photo" : "Previous photo"}
               >
@@ -812,10 +809,10 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
               </button>
             )}
 
-            <img 
-              src={activeModalImage} 
-              alt="Enlarged view" 
-              className="w-full h-auto max-h-[85vh] object-contain bg-stone-950" 
+            <img
+              src={activeModalImage}
+              alt="Enlarged view"
+              className="w-full h-auto max-h-[85vh] object-contain bg-stone-950"
             />
 
             {/* Lightbox Next Arrow */}
@@ -830,11 +827,10 @@ export default function BiodataPreview({ data, previewMode = 'desktop', onOpenFe
                   }
                 }}
                 disabled={currentPhotoIdx === photoList.length - 1}
-                className={`absolute right-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all ${
-                  currentPhotoIdx === photoList.length - 1
+                className={`absolute right-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all ${currentPhotoIdx === photoList.length - 1
                     ? 'opacity-25 cursor-not-allowed bg-stone-900/60 text-stone-400 pointer-events-none'
                     : 'opacity-90 hover:opacity-100 bg-amber-500 text-stone-950 font-bold hover:scale-110 active:scale-95'
-                }`}
+                  }`}
                 aria-label="Next photo"
                 title={currentPhotoIdx === photoList.length - 1 ? "Last photo" : "Next photo"}
               >
